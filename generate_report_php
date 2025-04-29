@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Generation - CRM System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.1.1/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .report-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-section {
+            margin-bottom: 30px;
+        }
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .report-table th, .report-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        .report-table th {
+            background-color: #f1f5f9;
+            font-weight: 600;
+        }
+        .report-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        .report-table tr:hover {
+            background-color: #e2e8f0;
+        }
+        .tag {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .chart-container {
+            height: 400px;
+            margin: 30px 0;
+        }
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        @media print {
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <?php
+    // This is a PHP file that would normally process the report generation
+    // Since this is being rendered as HTML, we're showing what it would look like after processing
+    ?>
+
+    <div class="report-container">
+        <div class="header-section">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Report Generation</h1>
+                <p class="text-gray-600">Generate custom reports for the CRM system</p>
+            </div>
+            <div class="no-print">
+                <button id="generateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    <i class="fas fa-sync-alt mr-2"></i>Generate Report
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white shadow-md rounded-lg p-6 mb-6 no-print">
+            <h2 class="text-xl font-semibold mb-4">Report Parameters</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="form-section">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="reportType">
+                        Report Type
+                    </label>
+                    <select id="reportType" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="client_activity">Client Activity</option>
+                        <option value="user_performance">User Performance</option>
+                        <option value="deposit_analysis">Deposit Analysis</option>
+                        <option value="non_playing">Non-Playing Clients</option>
+                        <option value="campaign_performance">Campaign Performance</option>
+                    </select>
+                </div>
+
+                <div class="form-section">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="dateRange">
+                        Date Range
+                    </label>
+                    <div class="flex space-x-4">
+                        <input type="date" id="startDate" class="shadow border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-full">
+                        <span class="self-center">to</span>
+                        <input type="date" id="endDate" class="shadow border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-full">
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                <div class="form-section">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="user">
+                        User
+                    </label>
+                    <select id="user" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="all">All Users</option>
+                        <option value="1">John Doe</option>
+                        <option value="2">Jane Smith</option>
+                        <option value="3">Mike Johnson</option>
+                        <option value="4">Sarah Williams</option>
+                        <option value="5">Robert Brown</option>
+                    </select>
+                </div>
+
+                <div class="form-section">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="depositTag">
+                        Deposit Tag
+                    </label>
+                    <select id="depositTag" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="all">All Tags</option>
+                        <option value="Under 5K">Under 5K</option>
+                        <option value="Under 10K">Under 10K</option>
+                        <option value="Under 15K">Under 15K</option>
+                        <option value="Under 20K">Under 20K</option>
+                        <option value="Under 30K">Under 30K</option>
+                        <option value="Under 50K">Under 50K</option>
+                        <option value="More than 50K">More than 50K</option>
+                    </select>
+                </div>
+
+                <div class="form-section">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="campaign">
+                        Campaign
+                    </label>
+                    <select id="campaign" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="all">All Campaigns</option>
+                        <option value="1">Summer Special</option>
+                        <option value="2">New Year Promotion</option>
+                        <option value="3">VIP Client Outreach</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">
+                    Include Columns
+                </label>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" class="form-checkbox text-blue-600" checked>
+                            <span class="ml-2">Client ID</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" class="form-checkbox text-blue-600" checked>
+                            <span class="ml-2">Mobile Number</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" class="form-checkbox text-blue-600" checked>
+                            <span class="ml-2">Days Not Played</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" class="form-checkbox text-blue-600" checked>
+                            <span class="ml-2">Last Played Date</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" class="form-checkbox text-blue-600" checked>
+                            <span class="ml-2">Deposit Amount</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" class="form-checkbox text-blue-600" checked>
+                            <span class="ml-2">Deposit Tag</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" class="form-checkbox text-blue-600" checked>
+                            <span class="ml-2">Assigned User</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" class="form-checkbox text-blue-600" checked>
+                            <span class="ml-2">Follow-up Status</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end space-x-4">
+                <button class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
+                    Reset
+                </button>
+                <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    Generate Report
+                </button>
+            </div>
+        </div>
+
+        <!-- Report Output Section -->
+        <div class="bg-white shadow-md rounded-lg p-6">
+            <div class="header-section">
+                <h2 class="text-xl font-semibold">Client Activity Report</h2>
+                <p class="text-gray-600">Period: April 1, 2025 - April 28, 2025</p>
+            </div>
+
+            <div class="flex flex-wrap justify-between mb-6">
+                <div class="w-full md:w-1/4 p-4 bg-blue-50 rounded-lg mb-4 md:mb-0">
+                    <p class="text-gray-600 text-sm">Total Clients</p>
+                    <p class="text-3xl font-bold text-blue-800">1,542</p>
+                    <p class="text-sm text-blue-600">↑ 12% from last period</p>
+                </div>
+                <div class="w-full md:w-1/4 p-4 bg-green-50 rounded-lg mb-4 md:mb-0">
+                    <p class="text-gray-600 text-sm">Active Clients</p>
+                    <p class="text-3xl font-bold text-green-800">865</p>
+                    <p class="text-sm text-green-600">↑ 8% from last period</p>
+                </div>
+                <div class="w-full md:w-1/4 p-4 bg-yellow-50 rounded-lg mb-4 md:mb-0">
+                    <p class="text-gray-600 text-sm">Non-Playing Clients</p>
+                    <p class="text-3xl font-bold text-yellow-800">677</p>
+                    <p class="text-sm text-yellow-600">↑ 3% from last period</p>
+                </div>
+                <div class="w-full md:w-1/4 p-4 bg-purple-50 rounded-lg">
+                    <p class="text-gray-600 text-sm">Follow-ups Completed</p>
+                    <p class="text-3xl font-bold text-purple-800">3,865</p>
+                    <p class="text-sm text-purple-600">↑ 15% from last period</p>
+                </div>
+            </div>
+
+            <div class="chart-container mb-8">
+                <canvas id="activityChart"></canvas>
+            </div>
+
+            <h3 class="text-lg font-semibold mb-4">Client Activity by Deposit Category</h3>
+            <div class="overflow-x-auto">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>Deposit Category</th>
+                            <th>Total Clients</th>
+                            <th>Active Clients</th>
+                            <th>Non-Playing</th>
+                            <th>Average Days Not Played</th>
+                            <th>Follow-ups Completed</th>
+                            <th>Conversion Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="tag bg-gray-100">Under 5K</span></td>
+                            <td>452</td>
+                            <td>215</td>
+                            <td>237</td>
+                            <td>12.5</td>
+                            <td>856</td>
+                            <td>23.7%</td>
+                        </tr>
+                        <tr>
+                            <td><span class="tag bg-blue-100">Under 10K</span></td>
+                            <td>358</td>
+                            <td>184</td>
+                            <td>174</td>
+                            <td>8.2</td>
+                            <td>723</td>
+                            <td>31.5%</td>
+                        </tr>
+                        <tr>
+                            <td><span class="tag bg-green-100">Under 15K</span></td>
+                            <td>287</td>
+                            <td>172</td>
+                            <td>115</td>
+                            <td>6.8</td>
+                            <td>612</td>
+                            <td>38.2%</td>
+                        </tr>
+                        <tr>
+                            <td><span class="tag bg-yellow-100">Under 20K</span></td>
+                            <td>203</td>
+                            <td>135</td>
+                            <td>68</td>
+                            <td>5.3</td>
+                            <td>487</td>
+                            <td>42.7%</td>
+                        </tr>
+                        <tr>
+                            <td><span class="tag bg-orange-100">Under 30K</span></td>
+                            <td>142</td>
+                            <td>95</td>
+                            <td>47</td>
+                            <td>4.1</td>
+                            <td>356</td>
+                            <td>48.3%</td>
+                        </tr>
+                        <tr>
+                            <td><span class="tag bg-red-100">Under 50K</span></td>
+                            <td>68</td>
+                            <td>48</td>
+                            <td>20</td>
+                            <td>3.2</td>
+                            <td>214</td>
+                            <td>53.1%</td>
+                        </tr>
+                        <tr>
+                            <td><span class="tag bg-purple-100">More than 50K</span></td>
+                            <td>32</td>
+                            <td>26</td>
+                            <td>6</td>
+                            <td>2.1</td>
+                            <td>127</td>
+                            <td>67.2%</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr class="font-bold">
+                            <td>Total</td>
+                            <td>1,542</td>
+                            <td>865</td>
+                            <td>677</td>
+                            <td>7.6</td>
+                            <td>3,865</td>
+                            <td>34.8%</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <h3 class="text-lg font-semibold mb-4 mt-8">Top 10 Non-Playing Clients by Deposit Value</h3>
+            <div class="overflow-x-auto">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>Client ID</th>
+                            <th>Mobile Number</th>
+                            <th>Last Played Date</th>
+                            <th>Days Not Played</th>
+                            <th>Deposit Amount</th>
+                            <th>Deposit Tag</th>
+                            <th>Assigned To</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>VIP1234</td>
+                            <td>+91 9876543210</td>
+                            <td>Apr 12, 2025</td>
+                            <td>16</td>
+                            <td>₹75,000</td>
+                            <td><span class="tag bg-purple-100">More than 50K</span></td>
+                            <td>John Doe</td>
+                            <td><span class="tag bg-orange-100">Follow-up Assigned</span></td>
+                        </tr>
+                        <tr>
+                            <td>GOLD5678</td>
+                            <td>+91 9876543211</td>
+                            <td>Apr 15, 2025</td>
+                            <td>13</td>
+                            <td>₹65,000</td>
+                            <td><span class="tag bg-purple-100">More than 50K</span></td>
+                            <td>Jane Smith</td>
+                            <td><span class="tag bg-red-100">No Response</span></td>
+                        </tr>
+                        <tr>
+                            <td>PREM9012</td>
+                            <td>+91 9876543212</td>
+                            <td>Apr 10, 2025</td>
+                            <td>18</td>
+                            <td>₹52,500</td>
+                            <td><span class="tag bg-purple-100">More than 50K</span></td>
+                            <td>Mike Johnson</td>
+                            <td><span class="tag bg-green-100">Call Done</span></td>
+                        </tr>
+                        <tr>
+                            <td>HIGH3456</td>
+                            <td>+91 9876543213</td>
+                            <td>Apr 08, 2025</td>
+                            <td>20</td>
+                            <td>₹45,000</td>
+                            <td><span class="tag bg-red-100">Under 50K</span></td>
+                            <td>Sarah Williams</td>
+                            <td><span class="tag bg-green-100">Call Done</span></td>
+                        </tr>
+                        <tr>
+                            <td>REG7890</td>
+                            <td>+91 9876543214</td>
+                            <td>Apr 05, 2025</td>
+                            <td>23</td>
+                            <td>₹38,000</td>
+                            <td><span class="tag bg-red-100">Under 50K</span></td>
+                            <td>Robert Brown</td>
+                            <td><span class="tag bg-yellow-100">Pending</span></td>
+                        </tr>
+                        <tr>
+                            <td>TOP1234</td>
+                            <td>+91 9876543215</td>
+                            <td>Apr 03, 2025</td>
+                            <td>25</td>
+                            <td>₹35,000</td>
+                            <td><span class="tag bg-red-100">Under 50K</span></td>
+                            <td>John Doe</td>
+                            <td><span class="tag bg-blue-100">In Progress</span></td>
+                        </tr>
+                        <tr>
+                            <td>MID5678</td>
+                            <td>+91 9876543216</td>
+                            <td>Apr 09, 2025</td>
+                            <td>19</td>
+                            <td>₹32,500</td>
+                            <td><span class="tag bg-red-100">Under 50K</span></td>
+                            <td>Jane Smith</td>
+                            <td><span class="tag bg-green-100">Call Done</span></td>
+                        </tr>
+                        <tr>
+                            <td>STD9012</td>
+                            <td>+91 9876543217</td>
+                            <td>Apr 14, 2025</td>
+                            <td>14</td>
+                            <td>₹28,000</td>
+                            <td><span class="tag bg-orange-100">Under 30K</span></td>
+                            <td>Mike Johnson</td>
+                            <td><span class="tag bg-green-100">Call Done</span></td>
+                        </tr>
+                        <tr>
+                            <td>REG3456</td>
+                            <td>+91 9876543218</td>
+                            <td>Apr 16, 2025</td>
+                            <td>12</td>
+                            <td>₹25,000</td>
+                            <td><span class="tag bg-orange-100">Under 30K</span></td>
+                            <td>Sarah Williams</td>
+                            <td><span class="tag bg-yellow-100">Pending</span></td>
+                        </tr>
+                        <tr>
+                            <td>BASIC7890</td>
+                            <td>+91 9876543219</td>
+                            <td>Apr 18, 2025</td>
+                            <td>10</td>
+                            <td>₹22,500</td>
+                            <td><span class="tag bg-orange-100">Under 30K</span></td>
+                            <td>Robert Brown</td>
+                            <td><span class="tag bg-blue-100">In Progress</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-8 text-right">
+                <p class="text-sm text-gray-600">Report Generated: April 28, 2025, 10:45 AM IST</p>
+                <p class="text-sm text-gray-600">Generated By: Admin</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script>
+        // Initialize chart when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            const activityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Apr 1', 'Apr 5', 'Apr 10', 'Apr 15', 'Apr 20', 'Apr 25', 'Apr 28'],
+                    datasets: [
+                        {
+                            label: 'Active Clients',
+                            data: [820, 835, 845, 855, 860, 865, 865],
+                            borderColor: 'rgba(16, 185, 129, 1)',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Non-Playing Clients',
+                            data: [650, 660, 665, 670, 675, 675, 677],
+                            borderColor: 'rgba(245, 158, 11, 1)',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Follow-ups Completed',
+                            data: [120, 850, 1600, 2300, 2900, 3500, 3865],
+                            borderColor: 'rgba(124, 58, 237, 1)',
+                            backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                            tension: 0.4,
+                            borderDash: [5, 5],
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
