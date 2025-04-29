@@ -1,0 +1,400 @@
+<?php
+// Start session and include necessary files
+session_start();
+require_once 'config.php';
+require_once 'functions.php';
+
+// Check if user is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'user') {
+    header("Location: user_login.php");
+    exit;
+}
+
+// Get user info
+$userId = $_SESSION['user_id'];
+$username = $_SESSION['username'];
+
+// Process follow-up submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_followup'])) {
+    $clientId = $_POST['client_id'];
+    $status = $_POST['status'];
+    $remark = $_POST['remark'];
+    $specialFollowupId = $_POST['special_followup_id'];
+    
+    try {
+        // Begin transaction
+        $pdo->beginTransaction();
+        
+        // Insert into followups table
+        $query = "INSERT INTO followups (client_id, user_id, date, status, remark) 
+                  VALUES (:client_id, :user_id, CURRENT_DATE, :status, :remark)";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([
+            ':client_id' => $clientId,
+            ':user_id' => $userId,
+            ':status' => $status,
+            ':remark' => $remark
+        ]);
+        
+        // Update special followup status
+        $query = "UPDATE special_followups 
+                  SET status = 'completed', 
+                      completion_date = CURRENT_DATE, 
+                      completion_reason = :completion_reason
+                  WHERE id = :special_followup_id";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([
+            ':completion_reason' => "Completed by user: {$status}",
+            ':special_followup_id' => $specialFollowupId
+        ]);
+        
+        // If status is "id_created", add to master_clients
+        if ($status === 'id_created') {
+            $newIdName = $_POST['new_id_name'] ?? '';
+            $mobileNumber = $_POST['mobile_number'] ?? '';
+            
+            if (!empty($newIdName) && !empty($mobileNumber)) {
+                $query = "INSERT INTO master_clients (client_id_name, mobile_number, created_by, created_at) 
+                          VALUES (:client_id_name, :mobile_number, :created_by, NOW())";
+                $stmt = $pdo->prepare($query);
+                $stmt->execute([
+                    ':client_id_name' => $newIdName,
+                    ':mobile_number' => $mobileNumber,
+                    ':created_by' => $userId
+                ]);
+            }
+        }
+        
+        // Commit transaction
+        $pdo->commit();
+        $successMessage = "Follow-up saved successfully!";
+    } catch (PDOException $e) {
+        // Rollback on error
+        $pdo->rollBack();
+        $errorMessage = "Error: " . $e->getMessage();
+    }
+}
+
+// Get assigned special follow-ups for this user
+$query = "SELECT sf.id as followup_id, sf.assignment_date, sf.notes, sf.days_not_played, 
+          mc.id as client_id, mc.client_id_name, mc.mobile_number, mc.last_played_date, 
+          mc.deposit_amount, mc.deposit_tag
+          FROM special_followups sf
+          JOIN master_clients mc ON sf.client_id = mc.id
+          WHERE sf.assigned_user_id = :user_id AND sf.status = 'pending'
+          ORDER BY sf.days_not_played DESC";
+$stmt = $pdo->prepare($query);
+$stmt->execute([':user_id' => $userId]);
+$followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Special Follow-ups | Client Calling CRM</title>
+    
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* Custom styles for continuous page */
+        body {
+            background-color: #f0f4f8;
+        }
+        .client-card {
+            transition: all 0.3s ease;
+        }
+        .client-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .days-critical {
+            background-color: #FEE2E2;
+            color: #B91C1C;
+        }
+        .days-warning {
+            background-color: #FEF3C7;
+            color: #92400E;
+        }
+        .days-normal {
+            background-color: #E0F2FE;
+            color: #0369A1;
+        }
+        /* Deposit tag colors */
+        .tag-5k {
+            background-color: #ECFDF5;
+            color: #065F46;
+        }
+        .tag-10k {
+            background-color: #F0FDF4;
+            color: #166534;
+        }
+        .tag-15k {
+            background-color: #F0FDFA;
+            color: #0F766E;
+        }
+        .tag-20k {
+            background-color: #EFF6FF;
+            color: #1E40AF;
+        }
+        .tag-30k {
+            background-color: #EEF2FF;
+            color: #3730A3;
+        }
+        .tag-50k {
+            background-color: #FAE8FF;
+            color: #6B21A8;
+        }
+        .tag-more {
+            background-color: #FDF2F8;
+            color: #9D174D;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Navigation -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="user_dashboard.php" class="flex items-center">
+                        <i class="fas fa-phone-alt mr-2"></i>
+                        <span class="text-xl font-bold">Client Calling & Follow-up CRM</span>
+                    </a>
+                </div>
+                <div class="flex items-center">
+                    <div class="ml-3 relative">
+                        <div class="flex items-center">
+                            <span class="mr-2">Welcome, <?php echo htmlspecialchars($username); ?></span>
+                            <a href="user_logout.php" class="text-white hover:text-gray-200 px-3 py-2 rounded-md text-sm font-medium">
+                                <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-900">Special Follow-ups</h1>
+            <p class="mt-2 text-gray-600">Manage clients who haven't played for an extended period and require your special attention.</p>
+        </div>
+
+        <!-- Success/Error Messages -->
+        <?php if (isset($successMessage)): ?>
+            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
+                <p><?php echo $successMessage; ?></p>
+            </div>
+        <?php endif; ?>
+        
+        <?php if (isset($errorMessage)): ?>
+            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+                <p><?php echo $errorMessage; ?></p>
+            </div>
+        <?php endif; ?>
+
+        <!-- Follow-up Count -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center">
+                <div class="rounded-full bg-blue-100 p-3 mr-4">
+                    <i class="fas fa-tasks text-blue-600 text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-700">Assigned Follow-ups</h2>
+                    <p class="text-3xl font-bold text-blue-600"><?php echo count($followups); ?></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Follow-up List -->
+        <?php if (count($followups) > 0): ?>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <?php foreach ($followups as $followup): ?>
+                    <?php 
+                        // Determine days not played class
+                        $daysClass = 'days-normal';
+                        if ($followup['days_not_played'] >= 30) {
+                            $daysClass = 'days-critical';
+                        } elseif ($followup['days_not_played'] >= 15) {
+                            $daysClass = 'days-warning';
+                        }
+                        
+                        // Determine deposit tag class
+                        $tagClass = 'tag-5k';
+                        if ($followup['deposit_tag'] === 'Under 10K') {
+                            $tagClass = 'tag-10k';
+                        } elseif ($followup['deposit_tag'] === 'Under 15K') {
+                            $tagClass = 'tag-15k';
+                        } elseif ($followup['deposit_tag'] === 'Under 20K') {
+                            $tagClass = 'tag-20k';
+                        } elseif ($followup['deposit_tag'] === 'Under 30K') {
+                            $tagClass = 'tag-30k';
+                        } elseif ($followup['deposit_tag'] === 'Under 50K') {
+                            $tagClass = 'tag-50k';
+                        } elseif ($followup['deposit_tag'] === 'More than 50K') {
+                            $tagClass = 'tag-more';
+                        }
+                    ?>
+                    
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden client-card">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <h3 class="text-xl font-bold text-gray-900 truncate" title="<?php echo htmlspecialchars($followup['client_id_name']); ?>">
+                                    <?php echo htmlspecialchars($followup['client_id_name']); ?>
+                                </h3>
+                                <span class="<?php echo $daysClass; ?> text-xs font-semibold inline-block py-1 px-2 rounded-full">
+                                    <?php echo $followup['days_not_played']; ?> days not played
+                                </span>
+                            </div>
+                            
+                            <div class="space-y-3 mb-4">
+                                <div class="flex items-center text-gray-600">
+                                    <i class="fas fa-phone-alt w-5 text-center mr-2"></i>
+                                    <span><?php echo htmlspecialchars($followup['mobile_number']); ?></span>
+                                </div>
+                                
+                                <div class="flex items-center text-gray-600">
+                                    <i class="fas fa-calendar-alt w-5 text-center mr-2"></i>
+                                    <span>Last played: <?php echo htmlspecialchars($followup['last_played_date'] ?: 'Never'); ?></span>
+                                </div>
+                                
+                                <div class="flex items-center">
+                                    <i class="fas fa-money-bill-wave w-5 text-center mr-2 text-gray-600"></i>
+                                    <span class="mr-2">₹<?php echo number_format($followup['deposit_amount']); ?></span>
+                                    <span class="<?php echo $tagClass; ?> text-xs font-semibold py-1 px-2 rounded-full">
+                                        <?php echo htmlspecialchars($followup['deposit_tag']); ?>
+                                    </span>
+                                </div>
+                                
+                                <?php if (!empty($followup['notes'])): ?>
+                                <div class="flex items-start text-gray-600 bg-gray-50 p-3 rounded">
+                                    <i class="fas fa-sticky-note w-5 text-center mr-2 mt-1"></i>
+                                    <span class="text-sm"><?php echo nl2br(htmlspecialchars($followup['notes'])); ?></span>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <div class="border-t pt-4">
+                                <button onclick="openFollowupModal('<?php echo $followup['followup_id']; ?>', '<?php echo $followup['client_id']; ?>', '<?php echo htmlspecialchars(addslashes($followup['client_id_name'])); ?>')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                    Record Follow-up
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <div class="bg-white rounded-lg shadow-md p-8 text-center">
+                <div class="inline-block p-4 rounded-full bg-blue-100 mb-4">
+                    <i class="fas fa-check-circle text-blue-600 text-4xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-700 mb-2">No pending follow-ups!</h3>
+                <p class="text-gray-500">You don't have any special follow-ups assigned at the moment.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- Follow-up Modal -->
+    <div id="followupModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="px-6 py-4 border-b">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-900">Record Follow-up</h3>
+                    <button onclick="closeFollowupModal()" class="text-gray-400 hover:text-gray-500">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <form id="followupForm" method="POST" action="special_followup.php">
+                <input type="hidden" name="special_followup_id" id="special_followup_id">
+                <input type="hidden" name="client_id" id="client_id">
+                
+                <div class="px-6 py-4">
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-1">Client ID:</p>
+                        <p id="clientName" class="font-semibold text-gray-800"></p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="status">
+                            Status:
+                        </label>
+                        <select name="status" id="status" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" onchange="toggleNewIdFields()">
+                            <option value="call_done">Call Done</option>
+                            <option value="id_created">ID Created</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div id="newIdFields" class="hidden space-y-4">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="new_id_name">
+                                New ID Name:
+                            </label>
+                            <input type="text" name="new_id_name" id="new_id_name" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="mobile_number">
+                                Mobile Number:
+                            </label>
+                            <input type="text" name="mobile_number" id="mobile_number" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="remark">
+                            Remarks:
+                        </label>
+                        <textarea name="remark" id="remark" rows="3" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Enter your follow-up notes here..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 bg-gray-50 text-right">
+                    <button type="button" onclick="closeFollowupModal()" class="mr-2 py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Cancel
+                    </button>
+                    <button type="submit" name="submit_followup" class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Save Follow-up
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openFollowupModal(followupId, clientId, clientName) {
+            document.getElementById('special_followup_id').value = followupId;
+            document.getElementById('client_id').value = clientId;
+            document.getElementById('clientName').textContent = clientName;
+            document.getElementById('followupModal').classList.remove('hidden');
+        }
+        
+        function closeFollowupModal() {
+            document.getElementById('followupModal').classList.add('hidden');
+            document.getElementById('followupForm').reset();
+        }
+        
+        function toggleNewIdFields() {
+            const status = document.getElementById('status').value;
+            const newIdFields = document.getElementById('newIdFields');
+            
+            if (status === 'id_created') {
+                newIdFields.classList.remove('hidden');
+            } else {
+                newIdFields.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
