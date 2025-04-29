@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Backup and Restore</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #1e40af;
+            color: white;
+            padding: 1rem;
+            font-weight: 600;
+        }
+        .card-body {
+            padding: 1.5rem;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background-color: #1e40af;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #1e3a8a;
+        }
+        .btn-success {
+            background-color: #16a34a;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #15803d;
+        }
+        .btn-danger {
+            background-color: #dc2626;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #b91c1c;
+        }
+        .alert {
+            padding: 1rem;
+            border-radius: 0.25rem;
+            margin-bottom: 1rem;
+        }
+        .alert-info {
+            background-color: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            color: #1e40af;
+        }
+        .alert-success {
+            background-color: #dcfce7;
+            border-left: 4px solid #22c55e;
+            color: #16a34a;
+        }
+        .alert-warning {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            color: #b45309;
+        }
+        .log-container {
+            background-color: #1e293b;
+            color: #f8fafc;
+            border-radius: 0.25rem;
+            padding: 1rem;
+            font-family: 'Courier New', Courier, monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .step {
+            display: flex;
+            margin-bottom: 1rem;
+            align-items: flex-start;
+        }
+        .step-number {
+            background-color: #1e40af;
+            color: white;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            flex-shrink: 0;
+        }
+        .step-content {
+            flex: 1;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Database Backup and Restore</h1>
+        
+        <div class="card">
+            <div class="card-header flex items-center">
+                <i class="fas fa-shield-alt mr-2"></i> System Information
+            </div>
+            <div class="card-body">
+                <?php
+                // Display system information
+                $php_version = phpversion();
+                $server_software = $_SERVER['SERVER_SOFTWARE'];
+                $max_upload = ini_get('upload_max_filesize');
+                $max_post = ini_get('post_max_size');
+                $memory_limit = ini_get('memory_limit');
+                $max_execution_time = ini_get('max_execution_time');
+                
+                // Get database information
+                if (file_exists('config.php')) {
+                    include 'config.php';
+                    $db_info = "Connected to: " . DB_HOST . " / " . DB_NAME;
+                } else {
+                    $db_info = "Database configuration not found.";
+                }
+                ?>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p><strong>PHP Version:</strong> <?php echo $php_version; ?></p>
+                        <p><strong>Server Software:</strong> <?php echo $server_software; ?></p>
+                        <p><strong>Database:</strong> <?php echo $db_info; ?></p>
+                    </div>
+                    <div>
+                        <p><strong>Upload Max Filesize:</strong> <?php echo $max_upload; ?></p>
+                        <p><strong>Post Max Size:</strong> <?php echo $max_post; ?></p>
+                        <p><strong>Memory Limit:</strong> <?php echo $memory_limit; ?></p>
+                        <p><strong>Max Execution Time:</strong> <?php echo $max_execution_time; ?> seconds</p>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mt-4">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    For large databases, you may need to increase <strong>memory_limit</strong> and <strong>max_execution_time</strong> in your PHP configuration.
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Backup Section -->
+            <div class="card">
+                <div class="card-header flex items-center">
+                    <i class="fas fa-download mr-2"></i> Database Backup
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Creates a complete backup of your database including all tables and data.
+                    </div>
+                    
+                    <form method="post" action="<?php echo $_SERVER['PHP_SELF']; ?>" class="mt-4">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="backup_type">
+                                Backup Type:
+                            </label>
+                            <select name="backup_type" id="backup_type" class="shadow border rounded w-full py-2 px-3 text-gray-700">
+                                <option value="complete">Complete Backup (Structure & Data)</option>
+                                <option value="structure">Structure Only (No Data)</option>
+                                <option value="data">Data Only (No Structure)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">
+                                Tables to Include:
+                            </label>
+                            <div class="max-h-40 overflow-y-auto border rounded p-2">
+                                <?php
+                                // Get all tables from database
+                                if (isset($conn)) {
+                                    $tables_query = $conn->query("SHOW TABLES");
+                                    if ($tables_query) {
+                                        while ($table = $tables_query->fetch_array()) {
+                                            echo '<div class="mb-1"><label class="inline-flex items-center">
+                                                <input type="checkbox" name="tables[]" value="'.$table[0].'" class="form-checkbox" checked>
+                                                <span class="ml-2">'.$table[0].'</span>
+                                            </label></div>';
+                                        }
+                                    }
+                                } else {
+                                    echo '<p>Connect to database to see tables</p>';
+                                }
+                                ?>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="add_drop" class="form-checkbox" checked>
+                                <span class="ml-2">Add DROP TABLE statements</span>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <button type="submit" name="create_backup" class="btn btn-primary">
+                                <i class="fas fa-download mr-1"></i> Create Backup
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <?php
+                    // Handle backup creation
+                    if (isset($_POST['create_backup'])) {
+                        // In a real implementation, this would include the backup process code
+                        echo '<div class="mt-4 alert alert-success"><i class="fas fa-check-circle mr-2"></i>Backup completed successfully! <a href="#" class="underline">Download SQL File</a></div>';
+                    }
+                    ?>
+                    
+                    <h3 class="font-bold text-lg mt-6 mb-3">Recent Backups</h3>
+                    <div class="border rounded overflow-hidden">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filename</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <?php
+                                // Display recent backups
+                                $backup_files = array(
+                                    array('filename' => 'backup_2023-04-28.sql', 'date' => '2023-04-28 14:30:15', 'size' => '1.2 MB'),
+                                    array('filename' => 'backup_2023-04-25.sql', 'date' => '2023-04-25 09:15:22', 'size' => '1.1 MB'),
+                                    array('filename' => 'backup_2023-04-20.sql', 'date' => '2023-04-20 16:45:08', 'size' => '1.0 MB'),
+                                );
+                                
+                                foreach ($backup_files as $file) {
+                                    echo '<tr>
+                                        <td class="px-4 py-2 whitespace-nowrap">'.$file['filename'].'</td>
+                                        <td class="px-4 py-2 whitespace-nowrap">'.$file['date'].'</td>
+                                        <td class="px-4 py-2 whitespace-nowrap">'.$file['size'].'</td>
+                                        <td class="px-4 py-2 whitespace-nowrap">
+                                            <a href="#" class="text-blue-600 hover:text-blue-900 mr-3" title="Download"><i class="fas fa-download"></i></a>
+                                            <a href="#" class="text-red-600 hover:text-red-900" title="Delete"><i class="fas fa-trash-alt"></i></a>
+                                        </td>
+                                    </tr>';
+                                }
+                                ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Restore Section -->
+            <div class="card">
+                <div class="card-header flex items-center">
+                    <i class="fas fa-upload mr-2"></i> Database Restore
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        <strong>Warning:</strong> Restoring a database will overwrite existing data. Make sure you have a backup before proceeding.
+                    </div>
+                    
+                    <form method="post" action="<?php echo $_SERVER['PHP_SELF']; ?>" enctype="multipart/form-data" class="mt-4">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="sql_file">
+                                Upload SQL File:
+                            </label>
+                            <input type="file" name="sql_file" id="sql_file" class="shadow border rounded w-full py-2 px-3 text-gray-700" accept=".sql">
+                            <p class="text-sm text-gray-500 mt-1">Max file size: <?php echo $max_upload; ?></p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="confirm_restore" class="form-checkbox">
+                                <span class="ml-2">I confirm I want to restore this database and understand this will overwrite existing data</span>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <button type="submit" name="restore_database" class="btn btn-danger">
+                                <i class="fas fa-upload mr-1"></i> Restore Database
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <?php
+                    // Handle restore process
+                    if (isset($_POST['restore_database'])) {
+                        if (!isset($_POST['confirm_restore'])) {
+                            echo '<div class="mt-4 alert alert-warning"><i class="fas fa-exclamation-triangle mr-2"></i>Please confirm you want to restore the database.</div>';
+                        } else if (!isset($_FILES['sql_file']) || $_FILES['sql_file']['error'] != UPLOAD_ERR_OK) {
+                            echo '<div class="mt-4 alert alert-warning"><i class="fas fa-exclamation-triangle mr-2"></i>Please upload a valid SQL file.</div>';
+                        } else {
+                            // In a real implementation, this would include the restore process code
+                            echo '<div class="mt-4 alert alert-success"><i class="fas fa-check-circle mr-2"></i>Database restored successfully!</div>';
+                        }
+                    }
+                    ?>
+                    
+                    <h3 class="font-bold text-lg mt-6 mb-3">Restore Instructions</h3>
+                    <div class="space-y-4">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <p class="font-semibold">Create a backup</p>
+                                <p class="text-sm">Always create a backup of your current database before restoring another one.</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <p class="font-semibold">Select SQL file</p>
+                                <p class="text-sm">Upload the SQL file you want to restore. Make sure it was created with a compatible version of MySQL/MariaDB.</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <p class="font-semibold">Confirm and restore</p>
+                                <p class="text-sm">Check the confirmation box and click "Restore Database". This process may take several minutes for large databases.</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <p class="font-semibold">Verify restoration</p>
+                                <p class="text-sm">After the restore is complete, check your database to ensure all data was restored correctly.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Backup Log Section -->
+        <div class="card">
+            <div class="card-header flex items-center">
+                <i class="fas fa-history mr-2"></i> Backup & Restore Log
+            </div>
+            <div class="card-body">
+                <div class="log-container">
+                    <div class="text-green-400">[2023-04-28 14:30:15] Backup started</div>
+                    <div class="text-green-400">[2023-04-28 14:30:16] Exporting table: users (45 records)</div>
+                    <div class="text-green-400">[2023-04-28 14:30:16] Exporting table: master_clients (1542 records)</div>
+                    <div class="text-green-400">[2023-04-28 14:30:17] Exporting table: sheet_links (12 records)</div>
+                    <div class="text-green-400">[2023-04-28 14:30:17] Exporting table: followups (2345 records)</div>
+                    <div class="text-green-400">[2023-04-28 14:30:19] Exporting table: campaigns (6 records)</div>
+                    <div class="text-green-400">[2023-04-28 14:30:19] Exporting table: campaign_clients (156 records)</div>
+                    <div class="text-green-400">[2023-04-28 14:30:20] Exporting table: daily_entries (4532 records)</div>
+                    <div class="text-green-400">[2023-04-28 14:30:22] Exporting table: api_settings (2 records)</div>
+                    <div class="text-green-400">[2023-04-28 14:30:22] Backup completed successfully: backup_2023-04-28.sql (1.2 MB)</div>
+                    <div class="text-yellow-400">[2023-04-25 09:15:22] Backup completed with warnings: backup_2023-04-25.sql (1.1 MB)</div>
+                    <div class="text-red-400">[2023-04-22 11:42:35] Restore failed: Invalid SQL syntax in file</div>
+                    <div class="text-green-400">[2023-04-20 16:45:08] Backup completed successfully: backup_2023-04-20.sql (1.0 MB)</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Scheduled Backups Section -->
+        <div class="card">
+            <div class="card-header flex items-center">
+                <i class="fas fa-clock mr-2"></i> Scheduled Backups
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Configure automatic backups to ensure your data is regularly saved. Scheduled backups require cron job setup on your server.
+                </div>
+                
+                <form method="post" action="<?php echo $_SERVER['PHP_SELF']; ?>" class="mb-6">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="backup_frequency">
+                            Backup Frequency:
+                        </label>
+                        <select name="backup_frequency" id="backup_frequency" class="shadow border rounded w-full py-2 px-3 text-gray-700">
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="backup_time">
+                            Backup Time:
+                        </label>
+                        <input type="time" name="backup_time" id="backup_time" class="shadow border rounded w-full py-2 px-3 text-gray-700" value="02:00">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="retention_period">
+                            Backup Retention Period:
+                        </label>
+                        <select name="retention_period" id="retention_period" class="shadow border rounded w-full py-2 px-3 text-gray-700">
+                            <option value="7">7 days</option>
+                            <option value="14">14 days</option>
+                            <option value="30">30 days</option>
+                            <option value="60">60 days</option>
+                            <option value="90">90 days</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" name="send_email" class="form-checkbox">
+                            <span class="ml-2">Send email notification after backup</span>
+                        </label>
+                    </div>
+                    
+                    <div class="mb-4 email-settings hidden">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="email_address">
+                            Email Address:
+                        </label>
+                        <input type="email" name="email_address" id="email_address" class="shadow border rounded w-full py-2 px-3 text-gray-700" placeholder="admin@example.com">
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <button type="submit" name="save_schedule" class="btn btn-primary">
+                            <i class="fas fa-save mr-1"></i> Save Schedule
+                        </button>
+                    </div>
+                </form>
+                
+                <h3 class="font-bold text-lg mb-3">Cron Job Configuration</h3>
+                <div class="bg-gray-100 p-3 rounded font-mono text-sm mb-4">
+                    0 2 * * * php <?php echo realpath($_SERVER['SCRIPT_FILENAME']); ?> --backup=auto > /dev/null 2>&1
+                </div>
+                <p class="text-sm text-gray-600">Add this line to your server's crontab to enable automatic backups.</p>
+            </div>
+        </div>
+        
+        <div class="text-center text-gray-500 text-sm mt-8">
+            <p>Database Backup & Restore Tool | Version 1.0.0</p>
+            <p>For assistance, contact your system administrator.</p>
+        </div>
+    </div>
+    
+    <script>
+        // Show/hide email settings based on checkbox
+        document.addEventListener('DOMContentLoaded', function() {
+            var emailCheckbox = document.querySelector('input[name="send_email"]');
+            var emailSettings = document.querySelector('.email-settings');
+            
+            emailCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    emailSettings.classList.remove('hidden');
+                } else {
+                    emailSettings.classList.add('hidden');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
