@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Follow-up History | Client Calling CRM</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f5f7fb;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        @media print {
+            .no-print {
+                display: none;
+            }
+            body {
+                background-color: white;
+            }
+            .shadow {
+                box-shadow: none !important;
+            }
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .filter-section {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <?php
+    // Session start and authentication check
+    session_start();
+    if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'user') {
+        header("Location: user_login.php");
+        exit;
+    }
+    
+    // Include database connection
+    require_once 'config.php';
+    require_once 'functions.php';
+    
+    // Get user ID from session
+    $userId = $_SESSION['user_id'];
+    $username = $_SESSION['username'];
+    
+    // Default parameters for filtering
+    $startDate = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d', strtotime('-30 days'));
+    $endDate = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
+    $status = isset($_GET['status']) ? $_GET['status'] : '';
+    $clientSearch = isset($_GET['client_search']) ? $_GET['client_search'] : '';
+    
+    // Build query with filtering
+    $query = "SELECT f.id, f.date, f.status, f.remark, m.client_id_name, m.mobile_number, 
+                     m.days_not_played, m.deposit_tag, f.created_at 
+              FROM followups f 
+              JOIN master_clients m ON f.client_id = m.id 
+              WHERE f.user_id = :user_id";
+    
+    $params = [':user_id' => $userId];
+    
+    if (!empty($startDate)) {
+        $query .= " AND f.date >= :start_date";
+        $params[':start_date'] = $startDate;
+    }
+    
+    if (!empty($endDate)) {
+        $query .= " AND f.date <= :end_date";
+        $params[':end_date'] = $endDate;
+    }
+    
+    if (!empty($status)) {
+        $query .= " AND f.status = :status";
+        $params[':status'] = $status;
+    }
+    
+    if (!empty($clientSearch)) {
+        $query .= " AND (m.client_id_name LIKE :search OR m.mobile_number LIKE :search)";
+        $params[':search'] = "%$clientSearch%";
+    }
+    
+    $query .= " ORDER BY f.date DESC, f.created_at DESC";
+    
+    try {
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
+        $followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Get stats
+        $statsQuery = "SELECT 
+                          COUNT(*) as total,
+                          SUM(CASE WHEN status = 'call_done' THEN 1 ELSE 0 END) as calls_done,
+                          SUM(CASE WHEN status = 'id_created' THEN 1 ELSE 0 END) as ids_created,
+                          SUM(CASE WHEN status = 'other' THEN 1 ELSE 0 END) as others
+                      FROM followups 
+                      WHERE user_id = :user_id";
+        
+        if (!empty($startDate)) {
+            $statsQuery .= " AND date >= :start_date";
+        }
+        
+        if (!empty($endDate)) {
+            $statsQuery .= " AND date <= :end_date";
+        }
+        
+        $statsStmt = $pdo->prepare($statsQuery);
+        $statsParams = [':user_id' => $userId];
+        
+        if (!empty($startDate)) {
+            $statsParams[':start_date'] = $startDate;
+        }
+        
+        if (!empty($endDate)) {
+            $statsParams[':end_date'] = $endDate;
+        }
+        
+        $statsStmt->execute($statsParams);
+        $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
+        
+    } catch (PDOException $e) {
+        $error = "Database error: " . $e->getMessage();
+    }
+    ?>
+
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white shadow">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center">
+                    <i class="fas fa-phone-alt mr-2"></i>
+                    <h1 class="text-xl font-semibold">Client Calling & Follow-up CRM</h1>
+                </div>
+                <div class="flex items-center">
+                    <span class="mr-4">Welcome, <?php echo htmlspecialchars($username); ?></span>
+                    <a href="user_logout.php" class="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm">
+                        <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Navigation -->
+        <nav class="bg-white shadow-md no-print">
+            <div class="container mx-auto px-4">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex space-x-4">
+                        <a href="user_dashboard.php" class="px-3 py-2 text-gray-700 hover:text-blue-600">
+                            <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
+                        </a>
+                        <a href="daily_calling.php" class="px-3 py-2 text-gray-700 hover:text-blue-600">
+                            <i class="fas fa-phone mr-1"></i> Daily Calling
+                        </a>
+                        <a href="special_followup.php" class="px-3 py-2 text-gray-700 hover:text-blue-600">
+                            <i class="fas fa-user-clock mr-1"></i> Special Follow-ups
+                        </a>
+                        <a href="user_campaign_calling.php" class="px-3 py-2 text-gray-700 hover:text-blue-600">
+                            <i class="fas fa-bullhorn mr-1"></i> Campaign Calling
+                        </a>
+                        <a href="create_new_id.php" class="px-3 py-2 text-gray-700 hover:text-blue-600">
+                            <i class="fas fa-user-plus mr-1"></i> Create New ID
+                        </a>
+                        <a href="user_followup_history.php" class="px-3 py-2 text-blue-600 border-b-2 border-blue-600">
+                            <i class="fas fa-history mr-1"></i> Follow-up History
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 py-6">
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">
+                        <i class="fas fa-history text-blue-600 mr-2"></i> Your Follow-up History
+                    </h2>
+                    
+                    <button id="toggleFilters" class="bg-blue-100 text-blue-600 px-4 py-2 rounded-md text-sm no-print">
+                        <i class="fas fa-filter mr-1"></i> Filter Options
+                    </button>
+                </div>
+
+                <!-- Filter Section -->
+                <div id="filterSection" class="bg-gray-50 p-4 rounded-md mb-6 filter-section hidden no-print">
+                    <form action="" method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                            <input type="date" name="start_date" value="<?php echo $startDate; ?>" 
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                            <input type="date" name="end_date" value="<?php echo $endDate; ?>" 
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <select name="status" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
+                                <option value="">All Statuses</option>
+                                <option value="call_done" <?php echo $status === 'call_done' ? 'selected' : ''; ?>>Call Done</option>
+                                <option value="id_created" <?php echo $status === 'id_created' ? 'selected' : ''; ?>>ID Created</option>
+                                <option value="other" <?php echo $status === 'other' ? 'selected' : ''; ?>>Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Client Search</label>
+                            <div class="flex">
+                                <input type="text" name="client_search" value="<?php echo htmlspecialchars($clientSearch); ?>" 
+                                    placeholder="ID or Mobile" 
+                                    class="flex-1 rounded-l-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
+                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-md">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                        <div class="flex items-center">
+                            <div class="bg-blue-100 p-3 rounded-full mr-4">
+                                <i class="fas fa-tasks text-blue-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Total Follow-ups</p>
+                                <p class="text-2xl font-semibold text-gray-800"><?php echo $stats['total'] ?? 0; ?></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-4 border border-green-100">
+                        <div class="flex items-center">
+                            <div class="bg-green-100 p-3 rounded-full mr-4">
+                                <i class="fas fa-phone-alt text-green-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Calls Done</p>
+                                <p class="text-2xl font-semibold text-gray-800"><?php echo $stats['calls_done'] ?? 0; ?></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-purple-50 rounded-lg p-4 border border-purple-100">
+                        <div class="flex items-center">
+                            <div class="bg-purple-100 p-3 rounded-full mr-4">
+                                <i class="fas fa-id-card text-purple-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">IDs Created</p>
+                                <p class="text-2xl font-semibold text-gray-800"><?php echo $stats['ids_created'] ?? 0; ?></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-100">
+                        <div class="flex items-center">
+                            <div class="bg-yellow-100 p-3 rounded-full mr-4">
+                                <i class="fas fa-exclamation-circle text-yellow-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Other Status</p>
+                                <p class="text-2xl font-semibold text-gray-800"><?php echo $stats['others'] ?? 0; ?></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Follow-up Data Table -->
+                <?php if (isset($error)): ?>
+                    <div class="bg-red-100 text-red-700 p-4 rounded-md mb-4">
+                        <i class="fas fa-exclamation-circle mr-2"></i> <?php echo $error; ?>
+                    </div>
+                <?php else: ?>
+                    <?php if (empty($followups)): ?>
+                        <div class="bg-gray-100 p-8 rounded-md text-center">
+                            <i class="fas fa-info-circle text-gray-400 text-4xl mb-4"></i>
+                            <p class="text-gray-600">No follow-up history found for the selected criteria.</p>
+                            <p class="text-gray-500 text-sm mt-2">Try adjusting your filters to see more results.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="table-container">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client ID</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deposit</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Not Played</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <?php foreach ($followups as $followup): ?>
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700"><?php echo date('d M Y', strtotime($followup['date'])); ?></td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700"><?php echo htmlspecialchars($followup['client_id_name']); ?></td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700"><?php echo htmlspecialchars($followup['mobile_number']); ?></td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <?php if ($followup['status'] === 'call_done'): ?>
+                                                    <span class="status-badge bg-green-100 text-green-800">
+                                                        <i class="fas fa-phone-alt mr-1"></i> Call Done
+                                                    </span>
+                                                <?php elseif ($followup['status'] === 'id_created'): ?>
+                                                    <span class="status-badge bg-purple-100 text-purple-800">
+                                                        <i class="fas fa-id-card mr-1"></i> ID Created
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="status-badge bg-yellow-100 text-yellow-800">
+                                                        <i class="fas fa-exclamation-circle mr-1"></i> Other
+                                                    </span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <?php 
+                                                $tagColors = [
+                                                    'Under 5K' => 'bg-gray-100 text-gray-800',
+                                                    'Under 10K' => 'bg-blue-100 text-blue-800',
+                                                    'Under 15K' => 'bg-green-100 text-green-800',
+                                                    'Under 20K' => 'bg-indigo-100 text-indigo-800',
+                                                    'Under 30K' => 'bg-purple-100 text-purple-800',
+                                                    'Under 50K' => 'bg-yellow-100 text-yellow-800',
+                                                    'More than 50K' => 'bg-red-100 text-red-800'
+                                                ];
+                                                $tagColor = $tagColors[$followup['deposit_tag']] ?? 'bg-gray-100 text-gray-800';
+                                                ?>
+                                                <span class="status-badge <?php echo $tagColor; ?>">
+                                                    <?php echo htmlspecialchars($followup['deposit_tag']); ?>
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <?php 
+                                                $daysNotPlayed = intval($followup['days_not_played']);
+                                                $dayClass = 'bg-gray-100 text-gray-800';
+                                                
+                                                if ($daysNotPlayed >= 30) {
+                                                    $dayClass = 'bg-red-100 text-red-800';
+                                                } elseif ($daysNotPlayed >= 15) {
+                                                    $dayClass = 'bg-orange-100 text-orange-800';
+                                                } elseif ($daysNotPlayed >= 7) {
+                                                    $dayClass = 'bg-yellow-100 text-yellow-800';
+                                                }
+                                                ?>
+                                                <span class="status-badge <?php echo $dayClass; ?>">
+                                                    <?php echo $daysNotPlayed; ?> days
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 text-sm text-gray-700">
+                                                <?php echo htmlspecialchars($followup['remark']); ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-white py-4 border-t mt-auto no-print">
+            <div class="container mx-auto px-4">
+                <div class="text-center text-gray-500 text-sm">
+                    &copy; <?php echo date('Y'); ?> Client Calling & Follow-up CRM. All rights reserved.
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Toggle filter section
+        document.getElementById('toggleFilters').addEventListener('click', function() {
+            const filterSection = document.getElementById('filterSection');
+            filterSection.classList.toggle('hidden');
+        });
+        
+        // Show filters if any are active
+        <?php if (!empty($status) || !empty($clientSearch) || $startDate !== date('Y-m-d', strtotime('-30 days')) || $endDate !== date('Y-m-d')): ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('filterSection').classList.remove('hidden');
+        });
+        <?php endif; ?>
+    </script>
+</body>
+</html>
