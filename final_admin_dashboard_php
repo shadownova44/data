@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Client CRM</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <style>
+        .bg-primary { background-color: #4e73df; }
+        .text-primary { color: #4e73df; }
+        .border-left-primary { border-left: 4px solid #4e73df; }
+        .border-left-success { border-left: 4px solid #1cc88a; }
+        .border-left-warning { border-left: 4px solid #f6c23e; }
+        .border-left-danger { border-left: 4px solid #e74a3b; }
+        .stat-card { transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-5px); }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <?php
+    // Include database connection and functions
+    require_once 'config.php';
+    require_once 'functions.php';
+    
+    // Check if user is logged in and is admin
+    session_start();
+    if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+        header("Location: admin_login.php");
+        exit;
+    }
+    
+    // Get current date for queries
+    $today = date('Y-m-d');
+    
+    // Fetch total user count
+    $query = "SELECT COUNT(*) as total FROM users WHERE status = 'active'";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute();
+    $totalUsers = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Fetch total clients count
+    $query = "SELECT COUNT(*) as total FROM master_clients";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute();
+    $totalClients = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Calculate clients growth percentage
+    $query = "SELECT COUNT(*) as total FROM master_clients WHERE created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute();
+    $newClients = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $clientGrowth = ($totalClients > 0) ? round(($newClients / $totalClients) * 100) : 0;
+    
+    // Fetch today's call statistics
+    $query = "SELECT COUNT(*) as total FROM followups WHERE date = :today";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([':today' => $today]);
+    $callsToday = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Calculate calls growth percentage
+    $yesterdayDate = date('Y-m-d', strtotime('-1 day'));
+    $query = "SELECT COUNT(*) as total FROM followups WHERE date = :yesterday";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([':yesterday' => $yesterdayDate]);
+    $callsYesterday = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $callGrowth = ($callsYesterday > 0) ? round((($callsToday - $callsYesterday) / $callsYesterday) * 100) : 0;
+    
+    // Fetch today's new IDs
+    $query = "SELECT COUNT(*) as total FROM followups WHERE date = :today AND status = 'id_created'";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([':today' => $today]);
+    $newIdsToday = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Calculate new IDs growth percentage
+    $query = "SELECT COUNT(*) as total FROM followups WHERE date = :yesterday AND status = 'id_created'";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([':yesterday' => $yesterdayDate]);
+    $newIdsYesterday = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $newIdsGrowth = ($newIdsYesterday > 0) ? round((($newIdsToday - $newIdsYesterday) / $newIdsYesterday) * 100) : 0;
+    
+    // Fetch active campaigns
+    $query = "SELECT COUNT(*) as total FROM campaigns WHERE DATEDIFF(CURRENT_DATE, created_at) <= 30";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute();
+    $activeCampaigns = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Calculate campaign growth
+    $query = "SELECT COUNT(*) as total FROM campaigns WHERE created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute();
+    $newCampaigns = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Fetch top performers
+    $query = "SELECT u.username, COUNT(f.id) as calls_done, SUM(CASE WHEN f.status = 'id_created' THEN 1 ELSE 0 END) as ids_created,
+              COUNT(f.id) - SUM(CASE WHEN f.status IN ('call_done', 'id_created') THEN 1 ELSE 0 END) as pending,
+              MAX(f.created_at) as last_activity
+              FROM users u
+              LEFT JOIN followups f ON u.id = f.user_id AND f.date = :today
+              WHERE u.role = 'user' AND u.status = 'active'
+              GROUP BY u.id, u.username
+              ORDER BY calls_done DESC
+              LIMIT 5";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([':today' => $today]);
+    $topPerformers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Fetch recent activity
+    $query = "SELECT 'call' as type, f.created_at as timestamp, u.username, mc.client_id_name, f.status
+              FROM followups f
+              JOIN users u ON f.user_id = u.id
+              JOIN master_clients mc ON f.client_id = mc.id
+              WHERE f.date >= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+              UNION
+              SELECT 'new_id' as type, mc.created_at as timestamp, u.username, mc.client_id_name, NULL as status
+              FROM master_clients mc
+              JOIN users u ON mc.created_by = u.id
+              WHERE mc.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+              UNION
+              SELECT 'campaign' as type, c.created_at as timestamp, u.username, c.campaign_name as client_id_name, NULL as status
+              FROM campaigns c
+              JOIN users u ON c.created_by = u.id
+              WHERE c.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+              ORDER BY timestamp DESC
+              LIMIT 5";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute();
+    $recentActivity = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Fetch non-playing client statistics
+    $query = "SELECT 
+                SUM(CASE WHEN days_not_played BETWEEN 1 AND 7 THEN 1 ELSE 0 END) as days_1_7,
+                SUM(CASE WHEN days_not_played BETWEEN 8 AND 15 THEN 1 ELSE 0 END) as days_8_15,
+                SUM(CASE WHEN days_not_played BETWEEN 16 AND 30 THEN 1 ELSE 0 END) as days_16_30,
+                SUM(CASE WHEN days_not_played > 30 THEN 1 ELSE 0 END) as days_30_plus
+              FROM master_clients";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute();
+    $nonPlayingStats = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Fetch deposit tag statistics
+    $query = "SELECT 
+                deposit_tag,
+                COUNT(*) as count
+              FROM master_clients
+              WHERE deposit_tag IS NOT NULL
+              GROUP BY deposit_tag
+              ORDER BY 
+                CASE 
+                  WHEN deposit_tag = 'Under 5K' THEN 1
+                  WHEN deposit_tag = 'Under 10K' THEN 2
+                  WHEN deposit_tag = 'Under 15K' THEN 3
+                  WHEN deposit_tag = 'Under 20K' THEN 4
+                  WHEN deposit_tag = 'Under 30K' THEN 5
+                  WHEN deposit_tag = 'Under 50K' THEN 6
+                  WHEN deposit_tag = 'More than 50K' THEN 7
+                  ELSE 8
+                END";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute();
+    $depositStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Prepare data for charts
+    $depositLabels = [];
+    $depositData = [];
+    foreach ($depositStats as $stat) {
+        $depositLabels[] = $stat['deposit_tag'];
+        $depositData[] = $stat['count'];
+    }
+    
+    $nonPlayingLabels = ['1-7 Days', '8-15 Days', '16-30 Days', '30+ Days'];
+    $nonPlayingData = [
+        $nonPlayingStats['days_1_7'] ?? 0,
+        $nonPlayingStats['days_8_15'] ?? 0,
+        $nonPlayingStats['days_16_30'] ?? 0,
+        $nonPlayingStats['days_30_plus'] ?? 0
+    ];
+    
+    // Format activity time
+    function timeAgo($timestamp) {
+        $datetime = new DateTime($timestamp);
+        $now = new DateTime();
+        $interval = $now->diff($datetime);
+        
+        if ($interval->y > 0) {
+            return $interval->y . ' year' . ($interval->y > 1 ? 's' : '') . ' ago';
+        }
+        if ($interval->m > 0) {
+            return $interval->m . ' month' . ($interval->m > 1 ? 's' : '') . ' ago';
+        }
+        if ($interval->d > 0) {
+            return $interval->d . ' day' . ($interval->d > 1 ? 's' : '') . ' ago';
+        }
+        if ($interval->h > 0) {
+            return $interval->h . ' hour' . ($interval->h > 1 ? 's' : '') . ' ago';
+        }
+        if ($interval->i > 0) {
+            return $interval->i . ' minute' . ($interval->i > 1 ? 's' : '') . ' ago';
+        }
+        return 'Just now';
+    }
+    ?>
+
+    <!-- Navigation -->
+    <nav class="bg-primary shadow-lg">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center py-3">
+                <div class="flex items-center">
+                    <a href="admin_dashboard.php" class="text-white text-2xl font-bold">
+                        <i class="fas fa-phone-alt mr-2"></i> Client Calling & Follow-up CRM
+                    </a>
+                </div>
+                <div class="flex items-center">
+                    <div class="text-white mr-4">
+                        Welcome, <?php echo htmlspecialchars($_SESSION['username']); ?>
+                    </div>
+                    <div class="relative">
+                        <a href="#" class="text-white" onclick="toggleProfileDropdown()">
+                            <div class="bg-white text-primary rounded-full h-8 w-8 flex items-center justify-center">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        </a>
+                        <div id="profileDropdown" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden z-50">
+                            <a href="admin_logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-6">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <!-- Total Clients -->
+            <div class="bg-white rounded-lg shadow-md p-4 border-left-primary stat-card">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-xs font-bold text-gray-500 uppercase mb-1">Total Clients</div>
+                        <div class="text-xl font-bold text-gray-800"><?php echo number_format($totalClients); ?></div>
+                    </div>
+                    <div class="text-gray-300">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-500 mt-2">
+                    <span class="<?php echo $clientGrowth >= 0 ? 'text-green-500' : 'text-red-500'; ?>">
+                        <i class="fas <?php echo $clientGrowth >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'; ?>"></i>
+                        <?php echo abs($clientGrowth); ?>%
+                    </span>
+                    Since last month
+                </div>
+            </div>
+            
+            <!-- Calls Today -->
+            <div class="bg-white rounded-lg shadow-md p-4 border-left-success stat-card">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-xs font-bold text-gray-500 uppercase mb-1">Calls Today</div>
+                        <div class="text-xl font-bold text-gray-800"><?php echo number_format($callsToday); ?></div>
+                    </div>
+                    <div class="text-gray-300">
+                        <i class="fas fa-phone-alt fa-2x"></i>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-500 mt-2">
+                    <span class="<?php echo $callGrowth >= 0 ? 'text-green-500' : 'text-red-500'; ?>">
+                        <i class="fas <?php echo $callGrowth >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'; ?>"></i>
+                        <?php echo abs($callGrowth); ?>%
+                    </span>
+                    Since yesterday
+                </div>
+            </div>
+            
+            <!-- New IDs Today -->
+            <div class="bg-white rounded-lg shadow-md p-4 border-left-warning stat-card">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-xs font-bold text-gray-500 uppercase mb-1">New IDs Today</div>
+                        <div class="text-xl font-bold text-gray-800"><?php echo number_format($newIdsToday); ?></div>
+                    </div>
+                    <div class="text-gray-300">
+                        <i class="fas fa-id-card fa-2x"></i>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-500 mt-2">
+                    <span class="<?php echo $newIdsGrowth >= 0 ? 'text-green-500' : 'text-red-500'; ?>">
+                        <i class="fas <?php echo $newIdsGrowth >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'; ?>"></i>
+                        <?php echo abs($newIdsGrowth); ?>%
+                    </span>
+                    Since yesterday
+                </div>
+            </div>
+            
+            <!-- Active Campaigns -->
+            <div class="bg-white rounded-lg shadow-md p-4 border-left-danger stat-card">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-xs font-bold text-gray-500 uppercase mb-1">Active Campaigns</div>
+                        <div class="text-xl font-bold text-gray-800"><?php echo number_format($activeCampaigns); ?></div>
+                    </div>
+                    <div class="text-gray-300">
+                        <i class="fas fa-bullhorn fa-2x"></i>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-500 mt-2">
+                    <span class="text-green-500">
+                        <i class="fas fa-plus"></i>
+                        <?php echo $newCampaigns; ?>
+                    </span>
+                    New this week
+                </div>
+            </div>
+        </div>
+        
+        <!-- Navigation Tabs -->
+        <div class="bg-white shadow-md rounded-lg mb-6 overflow-hidden">
+            <div class="flex flex-wrap">
+                <a href="admin_dashboard.php" class="px-6 py-3 text-sm font-medium text-primary border-b-2 border-primary">Dashboard</a>
+                <a href="sheet_manager.php" class="px-6 py-3 text-sm font-medium text-gray-500 hover:text-primary">Google Sheet Manager</a>
+                <a href="campaign_manager.php" class="px-6 py-3 text-sm font-medium text-gray-500 hover:text-primary">Campaign Manager</a>
+                <a href="followups.php" class="px-6 py-3 text-sm font-medium text-gray-500 hover:text-primary">Follow-ups</a>
+                <a href="new_ids.php" class="px-6 py-3 text-sm font-medium text-gray-500 hover:text-primary">New IDs</a>
+                <a href="manage_users.php" class="px-6 py-3 text-sm font-medium text-gray-500 hover:text-primary">User Management</a>
+                <a href="reports.php" class="px-6 py-3 text-sm font-medium text-gray-500 hover:text-primary">Reports</a>
+            </div>
+        </div>
+        
+        <!-- Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column -->
+            <div class="lg:col-span-2">
+                <!-- Today's Overview -->
+                <div class="bg-white rounded-lg shadow-md mb-6">
+                    <div class="border-b border-gray-200 px-6 py-3">
+                        <h3 class="text-lg font-semibold text-gray-800">Today's Overview</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white">
+                                <thead>
+                                    <tr>
+                                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Calls Done</th>
+                                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IDs Created</th>
+                                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
+                                        <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Activity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($topPerformers)): ?>
+                                    <tr>
+                                        <td colspan="5" class="py-4 px-4 border-b border-gray-200 text-center text-gray-500">No data available for today.</td>
+                                    </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($topPerformers as $user): ?>
+                                        <tr>
+                                            <td class="py-3 px-4 border-b border-gray-200"><?php echo htmlspecialchars($user['username']); ?></td>
+                                            <td class="py-3 px-4 border-b border-gray-200"><?php echo $user['calls_done']; ?></td>
+                                            <td class="py-3 px-4 border-b border-gray-200"><?php echo $user['ids_created']; ?></td>
+                                            <td class="py-3 px-4 border-b border-gray-200"><?php echo $user['pending']; ?></td>
+                                            <td class="py-3 px-4 border-b border-gray-200">
+                                                <?php echo $user['last_activity'] ? timeAgo($user['last_activity']) : 'No activity'; ?>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Data Charts -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- Non-Playing Days Chart -->
+                    <div class="bg-white rounded-lg shadow-md">
+                        <div class="border-b border-gray-200 px-6 py-3">
+                            <h3 class="text-lg font-semibold text-gray-800">Non-Playing Clients</h3>
+                        </div>
+                        <div class="p-6">
+                            <canvas id="nonPlayingChart" height="200"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Deposit Tags Chart -->
+                    <div class="bg-white rounded-lg shadow-md">
+                        <div class="border-b border-gray-200 px-6 py-3">
+                            <h3 class="text-lg font-semibold text-gray-800">Deposit Tags</h3>
+                        </div>
+                        <div class="p-6">
+                            <canvas id="depositChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column -->
+            <div>
+                <!-- Recent Activity -->
+                <div class="bg-white rounded-lg shadow-md mb-6">
+                    <div class="border-b border-gray-200 px-6 py-3">
+                        <h3 class="text-lg font-semibold text-gray-800">Recent Activity</h3>
+                    </div>
+                    <div class="p-6">
+                        <?php if (empty($recentActivity)): ?>
+                        <p class="text-center text-gray-500">No recent activities.</p>
+                        <?php else: ?>
+                            <?php foreach ($recentActivity as $activity): ?>
+                            <div class="flex items-start mb-4">
+                                <?php if ($activity['type'] == 'call'): ?>
+                                <div class="flex-shrink-0 mr-3">
+                                    <div class="flex items-center justify-center h-10 w-10 rounded-full bg-blue-100 text-blue-500">
+                                        <i class="fas fa-phone-alt"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm">
+                                        <span class="font-medium"><?php echo htmlspecialchars($activity['username']); ?></span>
+                                        made a call to Client ID: 
+                                        <span class="font-medium"><?php echo htmlspecialchars($activity['client_id_name']); ?></span>
+                                    </p>
+                                    <p class="text-xs text-gray-500"><?php echo timeAgo($activity['timestamp']); ?></p>
+                                </div>
+                                <?php elseif ($activity['type'] == 'new_id'): ?>
+                                <div class="flex-shrink-0 mr-3">
+                                    <div class="flex items-center justify-center h-10 w-10 rounded-full bg-green-100 text-green-500">
+                                        <i class="fas fa-id-card"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm">
+                                        <span class="font-medium"><?php echo htmlspecialchars($activity['username']); ?></span>
+                                        created a new ID: 
+                                        <span class="font-medium"><?php echo htmlspecialchars($activity['client_id_name']); ?></span>
+                                    </p>
+                                    <p class="text-xs text-gray-500"><?php echo timeAgo($activity['timestamp']); ?></p>
+                                </div>
+                                <?php elseif ($activity['type'] == 'campaign'): ?>
+                                <div class="flex-shrink-0 mr-3">
+                                    <div class="flex items-center justify-center h-10 w-10 rounded-full bg-purple-100 text-purple-500">
+                                        <i class="fas fa-bullhorn"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm">
+                                        <span class="font-medium"><?php echo htmlspecialchars($activity['username']); ?></span>
+                                        uploaded a new campaign: 
+                                        <span class="font-medium"><?php echo htmlspecialchars($activity['client_id_name']); ?></span>
+                                    </p>
+                                    <p class="text-xs text-gray-500"><?php echo timeAgo($activity['timestamp']); ?></p>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-lg shadow-md">
+                    <div class="border-b border-gray-200 px-6 py-3">
+                        <h3 class="text-lg font-semibold text-gray-800">Quick Actions</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <a href="sync_contacts.php" class="flex flex-col items-center p-4 border rounded-lg transition duration-300 hover:bg-blue-50">
+                                <div class="text-blue-500 mb-2">
+                                    <i class="fas fa-sync fa-2x"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">Sync Google Contacts</span>
+                            </a>
+                            
+                            <a href="campaign_upload.php" class="flex flex-col items-center p-4 border rounded-lg transition duration-300 hover:bg-green-50">
+                                <div class="text-green-500 mb-2">
+                                    <i class="fas fa-upload fa-2x"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">Upload Campaign</span>
+                            </a>
+                            
+                            <a href="sheet_manager.php" class="flex flex-col items-center p-4 border rounded-lg transition duration-300 hover:bg-yellow-50">
+                                <div class="text-yellow-500 mb-2">
+                                    <i class="fas fa-table fa-2x"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">Add Google Sheet</span>
+                            </a>
+                            
+                            <a href="reports.php" class="flex flex-col items-center p-4 border rounded-lg transition duration-300 hover:bg-purple-50">
+                                <div class="text-purple-500 mb-2">
+                                    <i class="fas fa-file-export fa-2x"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">Export Reports</span>
+                            </a>
+                            
+                            <a href="manage_users.php" class="flex flex-col items-center p-4 border rounded-lg transition duration-300 hover:bg-red-50">
+                                <div class="text-red-500 mb-2">
+                                    <i class="fas fa-user-plus fa-2x"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">Add New User</span>
+                            </a>
+                            
+                            <a href="api_settings.php" class="flex flex-col items-center p-4 border rounded-lg transition duration-300 hover:bg-gray-50">
+                                <div class="text-gray-500 mb-2">
+                                    <i class="fas fa-cogs fa-2x"></i>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">System Settings</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white py-4 mt-6">
+        <div class="container mx-auto px-4">
+            <div class="text-center text-gray-500 text-sm">
+                &copy; <?php echo date('Y'); ?> Client Calling & Follow-up CRM. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Profile dropdown toggle
+        function toggleProfileDropdown() {
+            const dropdown = document.getElementById('profileDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+        
+        // Close dropdown when clicking outside
+        window.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('profileDropdown');
+            if (!event.target.closest('.relative') && !dropdown.classList.contains('hidden')) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Non-Playing Days Chart
+        const nonPlayingCtx = document.getElementById('nonPlayingChart').getContext('2d');
+        const nonPlayingChart = new Chart(nonPlayingCtx, {
+            type: 'bar',
+            data: {
+                labels: <?php echo json_encode($nonPlayingLabels); ?>,
+                datasets: [{
+                    label: 'Number of Clients',
+                    data: <?php echo json_encode($nonPlayingData); ?>,
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(255, 159, 64, 0.2)',
+                        'rgba(255, 99, 132, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(255, 99, 132, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+
+        // Deposit Tags Chart
+        const depositCtx = document.getElementById('depositChart').getContext('2d');
+        const depositChart = new Chart(depositCtx, {
+            type: 'doughnut',
+            data: {
+                labels: <?php echo json_encode($depositLabels); ?>,
+                datasets: [{
+                    data: <?php echo json_encode($depositData); ?>,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)',
+                        'rgba(199, 199, 199, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(199, 199, 199, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: 10
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
