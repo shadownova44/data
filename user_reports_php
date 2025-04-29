@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Performance Reports - Client Calling & Follow-up CRM</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fb;
+        }
+        .report-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        .stat-card {
+            transition: transform 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .performance-progress {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #e2e8f0;
+        }
+        .performance-progress div {
+            height: 8px;
+            border-radius: 4px;
+        }
+        table th, table td {
+            padding: 12px 16px;
+            text-align: left;
+        }
+        .pdf-page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        @media print {
+            body {
+                background-color: white;
+            }
+            .report-card {
+                box-shadow: none;
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="pdf-page">
+        <!-- Top Navigation -->
+        <nav class="bg-blue-600 text-white py-3 px-6 mb-6 rounded-lg">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <i class="fas fa-phone-alt mr-2"></i>
+                    <span class="font-bold text-xl">Client Calling & Follow-up CRM</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="mr-4">Welcome, John Doe</span>
+                    <a href="#" class="bg-blue-700 hover:bg-blue-800 py-1 px-3 rounded-lg text-sm">
+                        <i class="fas fa-user mr-1"></i> Profile
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Page Header -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">
+                <i class="fas fa-chart-line mr-2"></i> Your Performance Reports
+            </h1>
+            <div class="flex space-x-2">
+                <button class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 rounded-lg text-sm font-medium">
+                    <i class="fas fa-file-export mr-1"></i> Export Excel
+                </button>
+                <button class="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium">
+                    <i class="fas fa-print mr-1"></i> Print View
+                </button>
+            </div>
+        </div>
+
+        <!-- Performance Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="stat-card report-card p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 mb-1">Total Calls</p>
+                        <h3 class="text-2xl font-bold text-gray-800">587</h3>
+                    </div>
+                    <div class="bg-blue-100 rounded-full p-3">
+                        <i class="fas fa-phone text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <p class="text-xs text-green-600">
+                        <i class="fas fa-arrow-up mr-1"></i> 12% increase from last month
+                    </p>
+                </div>
+            </div>
+
+            <div class="stat-card report-card p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 mb-1">IDs Created</p>
+                        <h3 class="text-2xl font-bold text-gray-800">83</h3>
+                    </div>
+                    <div class="bg-green-100 rounded-full p-3">
+                        <i class="fas fa-user-plus text-green-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <p class="text-xs text-green-600">
+                        <i class="fas fa-arrow-up mr-1"></i> 5% increase from last month
+                    </p>
+                </div>
+            </div>
+
+            <div class="stat-card report-card p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 mb-1">Follow-ups Completed</p>
+                        <h3 class="text-2xl font-bold text-gray-800">243</h3>
+                    </div>
+                    <div class="bg-purple-100 rounded-full p-3">
+                        <i class="fas fa-tasks text-purple-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <p class="text-xs text-green-600">
+                        <i class="fas fa-arrow-up mr-1"></i> 8% increase from last month
+                    </p>
+                </div>
+            </div>
+
+            <div class="stat-card report-card p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 mb-1">Conversion Rate</p>
+                        <h3 class="text-2xl font-bold text-gray-800">14.1%</h3>
+                    </div>
+                    <div class="bg-yellow-100 rounded-full p-3">
+                        <i class="fas fa-percentage text-yellow-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <p class="text-xs text-red-600">
+                        <i class="fas fa-arrow-down mr-1"></i> 2% decrease from last month
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Options -->
+        <div class="report-card p-6 mb-8">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Filter Report</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-2">Date Range</label>
+                    <select class="w-full rounded-lg border-gray-300 border p-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option>This Month</option>
+                        <option>Last Month</option>
+                        <option>Last 3 Months</option>
+                        <option>Custom Range</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-2">Activity Type</label>
+                    <select class="w-full rounded-lg border-gray-300 border p-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option>All Activities</option>
+                        <option>Calls Only</option>
+                        <option>ID Creation</option>
+                        <option>Special Follow-ups</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-2">Campaign</label>
+                    <select class="w-full rounded-lg border-gray-300 border p-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option>All Campaigns</option>
+                        <option>Summer Special</option>
+                        <option>New User Drive</option>
+                        <option>Re-engagement</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">
+                        <i class="fas fa-filter mr-1"></i> Apply Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Charts -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div class="report-card p-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Daily Activity</h2>
+                <canvas id="activityChart" height="250"></canvas>
+            </div>
+            <div class="report-card p-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Performance Metrics</h2>
+                <canvas id="performanceChart" height="250"></canvas>
+            </div>
+        </div>
+
+        <!-- Performance Goals -->
+        <div class="report-card p-6 mb-8">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Performance Against Goals</h2>
+            <div class="space-y-6">
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-600">Daily Calls (Goal: 30)</span>
+                        <span class="text-sm font-medium text-gray-800">25/30</span>
+                    </div>
+                    <div class="performance-progress">
+                        <div class="bg-blue-500" style="width: 83%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-600">IDs Created (Goal: 5)</span>
+                        <span class="text-sm font-medium text-gray-800">4/5</span>
+                    </div>
+                    <div class="performance-progress">
+                        <div class="bg-green-500" style="width: 80%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-600">Special Follow-ups (Goal: 10)</span>
+                        <span class="text-sm font-medium text-gray-800">12/10</span>
+                    </div>
+                    <div class="performance-progress">
+                        <div class="bg-purple-500" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-600">Conversion Rate (Goal: 15%)</span>
+                        <span class="text-sm font-medium text-gray-800">14.1%</span>
+                    </div>
+                    <div class="performance-progress">
+                        <div class="bg-yellow-500" style="width: 94%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Activity Table -->
+        <div class="report-card p-6 mb-8">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Recent Activities</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
+                            <th class="py-3 px-6 text-left">Date</th>
+                            <th class="py-3 px-6 text-left">Client ID</th>
+                            <th class="py-3 px-6 text-left">Activity</th>
+                            <th class="py-3 px-6 text-left">Status</th>
+                            <th class="py-3 px-6 text-left">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-600 text-sm">
+                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="py-3 px-6">2025-04-28</td>
+                            <td class="py-3 px-6">ABCD1234</td>
+                            <td class="py-3 px-6">Call</td>
+                            <td class="py-3 px-6"><span class="bg-green-100 text-green-800 py-1 px-3 rounded-full text-xs">Completed</span></td>
+                            <td class="py-3 px-6">Client will deposit tomorrow</td>
+                        </tr>
+                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="py-3 px-6">2025-04-28</td>
+                            <td class="py-3 px-6">EFGH5678</td>
+                            <td class="py-3 px-6">ID Creation</td>
+                            <td class="py-3 px-6"><span class="bg-green-100 text-green-800 py-1 px-3 rounded-full text-xs">Completed</span></td>
+                            <td class="py-3 px-6">New client from campaign</td>
+                        </tr>
+                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="py-3 px-6">2025-04-27</td>
+                            <td class="py-3 px-6">IJKL9012</td>
+                            <td class="py-3 px-6">Special Follow-up</td>
+                            <td class="py-3 px-6"><span class="bg-yellow-100 text-yellow-800 py-1 px-3 rounded-full text-xs">Pending</span></td>
+                            <td class="py-3 px-6">Client not answering</td>
+                        </tr>
+                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="py-3 px-6">2025-04-27</td>
+                            <td class="py-3 px-6">MNOP3456</td>
+                            <td class="py-3 px-6">Call</td>
+                            <td class="py-3 px-6"><span class="bg-green-100 text-green-800 py-1 px-3 rounded-full text-xs">Completed</span></td>
+                            <td class="py-3 px-6">Client promised to play</td>
+                        </tr>
+                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="py-3 px-6">2025-04-26</td>
+                            <td class="py-3 px-6">QRST7890</td>
+                            <td class="py-3 px-6">Call</td>
+                            <td class="py-3 px-6"><span class="bg-red-100 text-red-800 py-1 px-3 rounded-full text-xs">Failed</span></td>
+                            <td class="py-3 px-6">Number not in service</td>
+                        </tr>
+                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="py-3 px-6">2025-04-26</td>
+                            <td class="py-3 px-6">UVWX1234</td>
+                            <td class="py-3 px-6">Special Follow-up</td>
+                            <td class="py-3 px-6"><span class="bg-green-100 text-green-800 py-1 px-3 rounded-full text-xs">Completed</span></td>
+                            <td class="py-3 px-6">Client reactivated account</td>
+                        </tr>
+                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="py-3 px-6">2025-04-25</td>
+                            <td class="py-3 px-6">YZAB5678</td>
+                            <td class="py-3 px-6">ID Creation</td>
+                            <td class="py-3 px-6"><span class="bg-green-100 text-green-800 py-1 px-3 rounded-full text-xs">Completed</span></td>
+                            <td class="py-3 px-6">Referral from existing client</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-between items-center mt-6">
+                <div class="text-sm text-gray-600">Showing 7 of 243 activities</div>
+                <div class="flex space-x-1">
+                    <button class="bg-gray-200 hover:bg-gray-300 text-gray-600 font-bold py-2 px-4 rounded">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">1</button>
+                    <button class="bg-gray-200 hover:bg-gray-300 text-gray-600 font-bold py-2 px-4 rounded">2</button>
+                    <button class="bg-gray-200 hover:bg-gray-300 text-gray-600 font-bold py-2 px-4 rounded">3</button>
+                    <button class="bg-gray-200 hover:bg-gray-300 text-gray-600 font-bold py-2 px-4 rounded">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Campaign Performance -->
+        <div class="report-card p-6 mb-8">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Campaign Performance</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
+                            <th class="py-3 px-6 text-left">Campaign</th>
+                            <th class="py-3 px-6 text-left">Leads Assigned</th>
+                            <th class="py-3 px-6 text-left">Calls Made</th>
+                            <th class="py-3 px-6 text-left">IDs Created</th>
+                            <th class="py-3 px-6 text-left">Conversion Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-600 text-sm">
+                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="py-3 px-6">Summer Special</td>
+                            <td class="py-3 px-6">58</td>
+                            <td class="py-3 px-6">52</td>
+                            <td class="py-3 px-6">8</td>
+                            <td class="py-3 px-6">15.4%</td>
+                        </tr>
+                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="py-3 px-6">New User Drive</td>
+                            <td class="py-3 px-6">72</td>
+                            <td class="py-3 px-6">65</td>
+                            <td class="py-3 px-6">12</td>
+                            <td class="py-3 px-6">18.5%</td>
+                        </tr>
+                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="py-3 px-6">Re-engagement</td>
+                            <td class="py-3 px-6">43</td>
+                            <td class="py-3 px-6">38</td>
+                            <td class="py-3 px-6">4</td>
+                            <td class="py-3 px-6">10.5%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center text-gray-500 text-sm mt-10 mb-6">
+            <p>© 2025 Client Calling & Follow-up CRM. All rights reserved.</p>
+            <p class="mt-1">Generated on: April 28, 2025 - 15:42 IST</p>
+        </div>
+    </div>
+
+    <script>
+        // Activity Chart
+        const activityCtx = document.getElementById('activityChart').getContext('2d');
+        const activityChart = new Chart(activityCtx, {
+            type: 'line',
+            data: {
+                labels: ['Apr 22', 'Apr 23', 'Apr 24', 'Apr 25', 'Apr 26', 'Apr 27', 'Apr 28'],
+                datasets: [{
+                    label: 'Calls',
+                    data: [18, 22, 26, 20, 28, 24, 25],
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 35
+                    }
+                }
+            }
+        });
+
+        // Performance Chart
+        const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+        const performanceChart = new Chart(performanceCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Calls', 'IDs Created', 'Follow-ups', 'Special Cases'],
+                datasets: [{
+                    label: 'Current Month',
+                    data: [587, 83, 243, 45],
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.7)',
+                        'rgba(16, 185, 129, 0.7)',
+                        'rgba(139, 92, 246, 0.7)',
+                        'rgba(245, 158, 11, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(59, 130, 246, 1)',
+                        'rgba(16, 185, 129, 1)',
+                        'rgba(139, 92, 246, 1)',
+                        'rgba(245, 158, 11, 1)'
+                    ],
+                    borderWidth: 1
+                }, {
+                    label: 'Previous Month',
+                    data: [524, 79, 225, 52],
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.3)',
+                        'rgba(16, 185, 129, 0.3)',
+                        'rgba(139, 92, 246, 0.3)',
+                        'rgba(245, 158, 11, 0.3)'
+                    ],
+                    borderColor: [
+                        'rgba(59, 130, 246, 0.6)',
+                        'rgba(16, 185, 129, 0.6)',
+                        'rgba(139, 92, 246, 0.6)',
+                        'rgba(245, 158, 11, 0.6)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
