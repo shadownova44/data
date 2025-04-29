@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM System Directory Creator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f9fafb;
+        }
+        .directory-container {
+            max-width: 1200px;
+        }
+        .success {
+            background-color: #d1fae5;
+        }
+        .error {
+            background-color: #fee2e2;
+        }
+        .warning {
+            background-color: #fef3c7;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="directory-container mx-auto bg-white shadow-md rounded-lg p-6">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">CRM System Directory Creator</h1>
+            <p class="text-gray-600">This script will create all necessary directories for the CRM system with proper permissions</p>
+        </div>
+
+        <?php
+        // Define all required directories
+        $directories = [
+            // Root level directories
+            'admin',
+            'user',
+            'api',
+            'assets',
+            'assets/css',
+            'assets/js',
+            'assets/images',
+            'assets/images/icons',
+            'assets/vendor',
+            'assets/vendor/bootstrap',
+            'assets/vendor/jquery',
+            'assets/vendor/fontawesome',
+            'assets/vendor/datatables',
+            
+            // Upload directories
+            'uploads',
+            'uploads/campaigns',
+            'uploads/credentials',
+            'uploads/exports',
+            'uploads/imports',
+            
+            // Log directories
+            'logs',
+            'logs/errors',
+            'logs/activity',
+            'logs/auth',
+            'logs/api',
+            
+            // Temporary files
+            'tmp'
+        ];
+
+        // Process directory creation if form is submitted
+        $results = [];
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_directories'])) {
+            foreach ($directories as $dir) {
+                if (!file_exists($dir)) {
+                    if (mkdir($dir, 0755, true)) {
+                        $results[$dir] = ['status' => 'success', 'message' => 'Directory created successfully with 0755 permissions'];
+                    } else {
+                        $results[$dir] = ['status' => 'error', 'message' => 'Failed to create directory'];
+                    }
+                } else {
+                    // Check if the directory is writable
+                    if (is_writable($dir)) {
+                        $results[$dir] = ['status' => 'warning', 'message' => 'Directory already exists and is writable'];
+                    } else {
+                        $results[$dir] = ['status' => 'error', 'message' => 'Directory exists but is not writable. Please set 0755 permissions manually.'];
+                    }
+                }
+            }
+            
+            // Create .htaccess files to protect sensitive directories
+            $protected_dirs = [
+                'logs',
+                'uploads/credentials'
+            ];
+            
+            foreach ($protected_dirs as $dir) {
+                if (file_exists($dir)) {
+                    $htaccess_content = "Order deny,allow\nDeny from all";
+                    $htaccess_file = $dir . '/.htaccess';
+                    
+                    if (file_put_contents($htaccess_file, $htaccess_content) !== false) {
+                        $results[$dir . '/.htaccess'] = ['status' => 'success', 'message' => 'Protected with .htaccess file'];
+                    } else {
+                        $results[$dir . '/.htaccess'] = ['status' => 'error', 'message' => 'Failed to create .htaccess protection'];
+                    }
+                }
+            }
+        }
+        ?>
+
+        <div class="mb-6">
+            <form method="post" action="">
+                <button type="submit" name="create_directories" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full md:w-auto transition duration-300 flex items-center justify-center">
+                    <i class="fas fa-folder-plus mr-2"></i> Create All Directories
+                </button>
+            </form>
+        </div>
+
+        <?php if (!empty($results)): ?>
+            <div class="mb-6 p-4 bg-gray-100 rounded-lg">
+                <h2 class="text-xl font-semibold mb-4">Creation Results</h2>
+                
+                <?php
+                $success_count = 0;
+                $warning_count = 0;
+                $error_count = 0;
+                
+                foreach ($results as $status) {
+                    if ($status['status'] === 'success') $success_count++;
+                    elseif ($status['status'] === 'warning') $warning_count++;
+                    elseif ($status['status'] === 'error') $error_count++;
+                }
+                ?>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div class="bg-green-100 p-3 rounded-lg text-center">
+                        <span class="text-green-800 font-bold text-xl"><?php echo $success_count; ?></span>
+                        <p class="text-green-700">Success</p>
+                    </div>
+                    <div class="bg-yellow-100 p-3 rounded-lg text-center">
+                        <span class="text-yellow-800 font-bold text-xl"><?php echo $warning_count; ?></span>
+                        <p class="text-yellow-700">Warnings</p>
+                    </div>
+                    <div class="bg-red-100 p-3 rounded-lg text-center">
+                        <span class="text-red-800 font-bold text-xl"><?php echo $error_count; ?></span>
+                        <p class="text-red-700">Errors</p>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <div class="directory-list">
+            <h2 class="text-xl font-semibold mb-4">Directory Structure</h2>
+            
+            <div class="overflow-auto">
+                <table class="min-w-full bg-white">
+                    <thead>
+                        <tr>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Directory</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <?php
+                        // If we have results, show them
+                        if (!empty($results)) {
+                            foreach ($results as $dir => $result) {
+                                $status_color = '';
+                                $status_icon = '';
+                                
+                                if ($result['status'] === 'success') {
+                                    $status_color = 'text-green-600';
+                                    $status_icon = 'fa-check-circle';
+                                } elseif ($result['status'] === 'warning') {
+                                    $status_color = 'text-yellow-600';
+                                    $status_icon = 'fa-exclamation-triangle';
+                                } else {
+                                    $status_color = 'text-red-600';
+                                    $status_icon = 'fa-times-circle';
+                                }
+                                
+                                echo "<tr>";
+                                echo "<td class='py-3 px-4'><span class='font-mono text-sm'>{$dir}</span></td>";
+                                echo "<td class='py-3 px-4'><i class='fas {$status_icon} {$status_color} mr-2'></i><span class='{$status_color}'>" . ucfirst($result['status']) . "</span></td>";
+                                echo "<td class='py-3 px-4'>{$result['message']}</td>";
+                                echo "</tr>";
+                            }
+                        } else {
+                            // Otherwise just show the list of directories that will be created
+                            foreach ($directories as $dir) {
+                                $exists = file_exists($dir);
+                                $is_writable = $exists && is_writable($dir);
+                                
+                                $status_color = $exists ? ($is_writable ? 'text-green-600' : 'text-red-600') : 'text-gray-600';
+                                $status_icon = $exists ? ($is_writable ? 'fa-check-circle' : 'fa-times-circle') : 'fa-folder';
+                                $status_text = $exists ? ($is_writable ? 'Exists (writable)' : 'Exists (not writable)') : 'Will be created';
+                                
+                                echo "<tr>";
+                                echo "<td class='py-3 px-4'><span class='font-mono text-sm'>{$dir}</span></td>";
+                                echo "<td class='py-3 px-4'><i class='fas {$status_icon} {$status_color} mr-2'></i><span class='{$status_color}'>{$status_text}</span></td>";
+                                echo "<td class='py-3 px-4'>" . ($exists ? ($is_writable ? 'Ready to use' : 'Permissions need to be fixed (0755 required)') : 'Will be created with 0755 permissions') . "</td>";
+                                echo "</tr>";
+                            }
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-8 p-4 bg-blue-50 rounded-lg">
+            <h2 class="text-xl font-semibold mb-2">Next Steps</h2>
+            <p class="mb-2">After creating all directories:</p>
+            <ol class="list-decimal ml-6 mb-4">
+                <li class="mb-1">Upload all CRM system files to their appropriate directories</li>
+                <li class="mb-1">Navigate to <code class="bg-gray-200 px-1 rounded">install.php</code> in your browser to set up the database</li>
+                <li class="mb-1">Follow the installation wizard to complete the setup</li>
+            </ol>
+            <div class="font-medium text-red-600">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                Important: For security reasons, delete this script (directory_creator.php) after successful directory creation.
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-8 text-center text-gray-500 text-sm">
+        <p>Client Calling &amp; Follow-up CRM System &copy; <?php echo date('Y'); ?></p>
+    </footer>
+</body>
+</html>
