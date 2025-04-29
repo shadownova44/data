@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sheet Management API Documentation</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        pre {
+            white-space: pre-wrap;
+        }
+        .code-block {
+            background-color: #f8f8f8;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            font-family: Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+        .endpoint {
+            border-left: 4px solid #4f46e5;
+            padding-left: 1rem;
+            margin: 1.5rem 0;
+        }
+        .method {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+        .method.post {
+            background-color: #22c55e;
+            color: white;
+        }
+        .method.get {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .method.delete {
+            background-color: #ef4444;
+            color: white;
+        }
+        .method.put {
+            background-color: #f59e0b;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8 max-w-5xl">
+        <header class="mb-12 pb-4 border-b border-gray-200">
+            <h1 class="text-4xl font-bold text-indigo-700 mb-4">Sheet Management API</h1>
+            <p class="text-lg text-gray-600">API endpoints for managing Google Sheet links and testing connections</p>
+        </header>
+
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Overview</h2>
+            <p class="text-gray-700 mb-4">
+                The Sheet Management API provides endpoints for the CRM system to interact with Google Sheets. It allows administrators to add, update, and manage Google Sheet links for different months, as well as test the connection to ensure data can be properly fetched.
+            </p>
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
+                <h3 class="text-lg font-semibold text-blue-700 mb-2">
+                    <i class="fas fa-info-circle mr-2"></i>Authentication Required
+                </h3>
+                <p class="text-blue-600">
+                    All endpoints require authentication. Admin privileges are required for most operations.
+                </p>
+            </div>
+        </section>
+
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">API Endpoints</h2>
+
+            <div class="endpoint">
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Add New Sheet Link</h3>
+                <div class="mb-2">
+                    <span class="method post">POST</span>
+                    <code class="text-sm">/sheet_management_api.php?action=add_sheet</code>
+                </div>
+                <p class="text-gray-700 mb-4">
+                    Adds a new Google Sheet link for a specific month.
+                </p>
+                
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Request Parameters</h4>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border border-gray-200 mb-4">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Parameter</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Type</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Required</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">month_name</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">string</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Yes</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Month name (e.g., "January 2025")</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">sheet_url</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">string</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Yes</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Google Sheet URL</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Example Request</h4>
+                <div class="code-block">
+<pre>$.ajax({
+    url: 'sheet_management_api.php?action=add_sheet',
+    type: 'POST',
+    data: {
+        month_name: 'June 2025',
+        sheet_url: 'https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz/edit'
+    },
+    success: function(response) {
+        console.log(response);
+    },
+    error: function(xhr) {
+        console.error(xhr.responseText);
+    }
+});</pre>
+                </div>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Response</h4>
+                <div class="code-block">
+<pre>{
+    "status": "success",
+    "message": "Sheet for June 2025 added successfully",
+    "data": {
+        "id": 42,
+        "month_name": "June 2025",
+        "google_sheet_link": "https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz/edit",
+        "created_at": "2025-05-15 14:30:22"
+    }
+}</pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Update Sheet Link</h3>
+                <div class="mb-2">
+                    <span class="method put">PUT</span>
+                    <code class="text-sm">/sheet_management_api.php?action=update_sheet</code>
+                </div>
+                <p class="text-gray-700 mb-4">
+                    Updates an existing Google Sheet link.
+                </p>
+                
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Request Parameters</h4>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border border-gray-200 mb-4">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Parameter</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Type</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Required</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">id</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">integer</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Yes</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">ID of the sheet link to update</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">sheet_url</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">string</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Yes</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Updated Google Sheet URL</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Example Request</h4>
+                <div class="code-block">
+<pre>$.ajax({
+    url: 'sheet_management_api.php?action=update_sheet',
+    type: 'POST', // Some systems use POST with _method=PUT
+    data: {
+        _method: 'PUT', // For systems that emulate PUT
+        id: 42,
+        sheet_url: 'https://docs.google.com/spreadsheets/d/1NewLinkForJune2025/edit'
+    },
+    success: function(response) {
+        console.log(response);
+    },
+    error: function(xhr) {
+        console.error(xhr.responseText);
+    }
+});</pre>
+                </div>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Response</h4>
+                <div class="code-block">
+<pre>{
+    "status": "success",
+    "message": "Sheet link updated successfully",
+    "data": {
+        "id": 42,
+        "month_name": "June 2025",
+        "google_sheet_link": "https://docs.google.com/spreadsheets/d/1NewLinkForJune2025/edit",
+        "updated_at": "2025-05-16 09:15:43"
+    }
+}</pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Delete Sheet Link</h3>
+                <div class="mb-2">
+                    <span class="method delete">DELETE</span>
+                    <code class="text-sm">/sheet_management_api.php?action=delete_sheet</code>
+                </div>
+                <p class="text-gray-700 mb-4">
+                    Deletes an existing Google Sheet link.
+                </p>
+                
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Request Parameters</h4>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border border-gray-200 mb-4">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Parameter</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Type</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Required</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">id</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">integer</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Yes</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">ID of the sheet link to delete</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Example Request</h4>
+                <div class="code-block">
+<pre>$.ajax({
+    url: 'sheet_management_api.php?action=delete_sheet',
+    type: 'POST',
+    data: {
+        _method: 'DELETE', // For systems that emulate DELETE
+        id: 42
+    },
+    success: function(response) {
+        console.log(response);
+    },
+    error: function(xhr) {
+        console.error(xhr.responseText);
+    }
+});</pre>
+                </div>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Response</h4>
+                <div class="code-block">
+<pre>{
+    "status": "success",
+    "message": "Sheet link deleted successfully",
+    "data": {
+        "id": 42,
+        "deleted_at": "2025-05-17 11:22:35"
+    }
+}</pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Get All Sheet Links</h3>
+                <div class="mb-2">
+                    <span class="method get">GET</span>
+                    <code class="text-sm">/sheet_management_api.php?action=get_sheets</code>
+                </div>
+                <p class="text-gray-700 mb-4">
+                    Retrieves all Google Sheet links.
+                </p>
+                
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Query Parameters</h4>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border border-gray-200 mb-4">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Parameter</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Type</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Required</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">year</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">integer</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">No</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Filter by year (e.g., 2025)</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">month</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">string</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">No</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Filter by month name (e.g., "June")</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Example Request</h4>
+                <div class="code-block">
+<pre>$.ajax({
+    url: 'sheet_management_api.php?action=get_sheets&year=2025',
+    type: 'GET',
+    success: function(response) {
+        console.log(response);
+    },
+    error: function(xhr) {
+        console.error(xhr.responseText);
+    }
+});</pre>
+                </div>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Response</h4>
+                <div class="code-block">
+<pre>{
+    "status": "success",
+    "data": [
+        {
+            "id": 38,
+            "month_name": "January 2025",
+            "google_sheet_link": "https://docs.google.com/spreadsheets/d/1Jan2025Link/edit",
+            "created_at": "2024-12-15 10:20:30",
+            "status": "active"
+        },
+        {
+            "id": 39,
+            "month_name": "February 2025",
+            "google_sheet_link": "https://docs.google.com/spreadsheets/d/1Feb2025Link/edit",
+            "created_at": "2025-01-20 14:35:12",
+            "status": "active"
+        },
+        // More entries...
+    ],
+    "count": 12
+}</pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Get Single Sheet Link</h3>
+                <div class="mb-2">
+                    <span class="method get">GET</span>
+                    <code class="text-sm">/sheet_management_api.php?action=get_sheet</code>
+                </div>
+                <p class="text-gray-700 mb-4">
+                    Retrieves a single Google Sheet link by ID.
+                </p>
+                
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Query Parameters</h4>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border border-gray-200 mb-4">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Parameter</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Type</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Required</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">id</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">integer</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Yes</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">ID of the sheet link</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Example Request</h4>
+                <div class="code-block">
+<pre>$.ajax({
+    url: 'sheet_management_api.php?action=get_sheet&id=42',
+    type: 'GET',
+    success: function(response) {
+        console.log(response);
+    },
+    error: function(xhr) {
+        console.error(xhr.responseText);
+    }
+});</pre>
+                </div>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Response</h4>
+                <div class="code-block">
+<pre>{
+    "status": "success",
+    "data": {
+        "id": 42,
+        "month_name": "June 2025",
+        "google_sheet_link": "https://docs.google.com/spreadsheets/d/1NewLinkForJune2025/edit",
+        "created_at": "2025-05-15 14:30:22",
+        "updated_at": "2025-05-16 09:15:43",
+        "status": "active"
+    }
+}</pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Test Sheet Connection</h3>
+                <div class="mb-2">
+                    <span class="method post">POST</span>
+                    <code class="text-sm">/sheet_management_api.php?action=test_connection</code>
+                </div>
+                <p class="text-gray-700 mb-4">
+                    Tests the connection to a Google Sheet to ensure data can be fetched properly.
+                </p>
+                
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Request Parameters</h4>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border border-gray-200 mb-4">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Parameter</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Type</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Required</th>
+                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">sheet_url</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">string</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Yes</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Google Sheet URL to test</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">tab</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">string</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">No</td>
+                                <td class="py-2 px-4 border-b border-gray-200 text-sm">Tab name or number to test (defaults to "1")</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Example Request</h4>
+                <div class="code-block">
+<pre>$.ajax({
+    url: 'sheet_management_api.php?action=test_connection',
+    type: 'POST',
+    data: {
+        sheet_url: 'https://docs.google.com/spreadsheets/d/1NewLinkForJune2025/edit',
+        tab: '15'
+    },
+    success: function(response) {
+        console.log(response);
+    },
+    error: function(xhr) {
+        console.error(xhr.responseText);
+    }
+});</pre>
+                </div>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Response</h4>
+                <div class="code-block">
+<pre>{
+    "status": "success",
+    "message": "Connection successful",
+    "data": {
+        "sheet_url": "https://docs.google.com/spreadsheets/d/1NewLinkForJune2025/edit",
+        "tab": "15",
+        "sample_data": [
+            ["ID", "Amount"],
+            ["PLAYER123", "5000"],
+            ["PLAYER456", "10000"],
+            ["PLAYER789", "25000"]
+        ],
+        "rows_found": 152,
+        "has_headers": true
+    }
+}</pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Get Current Day's Sheet</h3>
+                <div class="mb-2">
+                    <span class="method get">GET</span>
+                    <code class="text-sm">/sheet_management_api.php?action=get_today_sheet</code>
+                </div>
+                <p class="text-gray-700 mb-4">
+                    Gets the Google Sheet link for the current month and information about today's tab.
+                </p>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Example Request</h4>
+                <div class="code-block">
+<pre>$.ajax({
+    url: 'sheet_management_api.php?action=get_today_sheet',
+    type: 'GET',
+    success: function(response) {
+        console.log(response);
+    },
+    error: function(xhr) {
+        console.error(xhr.responseText);
+    }
+});</pre>
+                </div>
+
+                <h4 class="text-lg font-semibold text-gray-700 mt-4 mb-2">Response</h4>
+                <div class="code-block">
+<pre>{
+    "status": "success",
+    "data": {
+        "current_date": "2025-06-15",
+        "day_tab": "15",
+        "month_name": "June 2025",
+        "sheet_link": "https://docs.google.com/spreadsheets/d/1NewLinkForJune2025/edit",
+        "sheet_id": 42,
+        "last_sync": "2025-06-15 08:45:12"
+    }
+}</pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Error Responses</h2>
+            
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Authentication Errors</h3>
+            <div class="code-block">
+<pre>{
+    "status": "error",
+    "code": 401,
+    "message": "Unauthorized access. Please login with admin privileges."
+}</pre>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mt-6 mb-4">Validation Errors</h3>
+            <div class="code-block">
+<pre>{
+    "status": "error",
+    "code": 400,
+    "message": "Validation failed",
+    "errors": {
+        "month_name": "Month name is required",
+        "sheet_url": "Invalid Google Sheet URL format"
+    }
+}</pre>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mt-6 mb-4">Resource Not Found</h3>
+            <div class="code-block">
+<pre>{
+    "status": "error",
+    "code": 404,
+    "message": "Sheet with ID 999 not found"
+}</pre>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mt-6 mb-4">Google API Errors</h3>
+            <div class="code-block">
+<pre>{
+    "status": "error",
+    "code": 500,
+    "message": "Failed to connect to Google Sheets API",
+    "errors": {
+        "google_api": "Invalid credentials or insufficient permissions"
+    }
+}</pre>
+            </div>
+        </section>
+
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Implementation</h2>
+            
+            <h3 class="text-xl font-bold text-gray-800 mb-4">PHP Code Example</h3>
+            <div class="code-block">
+<pre>
+&lt;?php
+// sheet_management_api.php - Main API file for Google Sheet operations
+
+// Load required dependencies
+require_once 'config.php';
+require_once 'functions.php';
+require_once 'auth_helpers.php';
+require_once 'vendor/autoload.php'; // For Google API Client
+
+// Verify admin authentication
+session_start();
+if (!isAdminAuthenticated()) {
+    header('Content-Type: application/json');
+    echo json_encode([
+        'status' => 'error',
+        'code' => 401,
+        'message' => 'Unauthorized access. Please login with admin privileges.'
+    ]);
+    exit;
+}
+
+// Determine the requested action
+$action = isset($_GET['action']) ? $_GET['action'] : '';
+
+// Route to the appropriate handler function based on the action
+switch ($action) {
+    case 'add_sheet':
+        addGoogleSheet();
+        break;
+    case 'update_sheet':
+        updateGoogleSheet();
+        break;
+    case 'delete_sheet':
+        deleteGoogleSheet();
+        break;
+    case 'get_sheets':
+        getGoogleSheets();
+        break;
+    case 'get_sheet':
+        getGoogleSheet();
+        break;
+    case 'test_connection':
+        testGoogleSheetConnection();
+        break;
+    case 'get_today_sheet':
+        getTodaySheet();
+        break;
+    default:
+        // Invalid action
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'error',
+            'code' => 400,
+            'message' => 'Invalid action specified'
+        ]);
+        exit;
+}
+
+// Function to add a new Google Sheet
+function addGoogleSheet() {
+    global $pdo;
+    
+    // Validate input
+    if (!isset($_POST['month_name']) || !isset($_POST['sheet_url'])) {
+        sendErrorResponse(400, 'Missing required parameters');
+    }
+    
+    $monthName = sanitizeInput($_POST['month_name']);
+    $sheetUrl = sanitizeInput($_POST['sheet_url']);
+    
+    // Validate Google Sheet URL format
+    if (!isValidGoogleSheetUrl($sheetUrl)) {
+        sendErrorResponse(400, 'Invalid Google Sheet URL format');
+    }
+    
+    try {
+        // Insert new sheet link into database
+        $query = "INSERT INTO sheet_links (month_name, google_sheet_link) 
+                  VALUES (:month_name, :sheet_url)";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([
+            ':month_name' => $monthName,
+            ':sheet_url' => $sheetUrl
+        ]);
+        
+        $newId = $pdo->lastInsertId();
+        
+        // Get the newly created record
+        $query = "SELECT * FROM sheet_links WHERE id = :id";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([':id' => $newId]);
+        $newSheet = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Send success response
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'success',
+            'message' => "Sheet for {$monthName} added successfully",
+            'data' => $newSheet
+        ]);
+    } catch (PDOException $e) {
+        sendErrorResponse(500, 'Database error: ' . $e->getMessage());
+    }
+}
+
+// Additional functions for update_sheet, delete_sheet, etc. would be implemented similarly
+?&gt;
+</pre>
+            </div>
+        </section>
+
+        <section class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Google API Integration</h2>
+            
+            <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-6">
+                <h3 class="text-lg font-semibold text-yellow-700 mb-2">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>Prerequisites
+                </h3>
+                <p class="text-yellow-600">
+                    This API requires proper Google API credentials to be configured in the api_settings.php file. Make sure to upload a valid credentials.json file through the Admin Panel.
+                </p>
+            </div>
+            
+            <p class="text-gray-700 mb-4">
+                The Sheet Management API integrates with the Google Sheets API using the official Google API PHP Client. It handles authentication, data fetching, and error handling for all Google Sheet operations.
+            </p>
+            
+            <h3 class="text-xl font-bold text-gray-800 mt-6 mb-4">Required Google API Scopes</h3>
+            <ul class="list-disc pl-6 mb-6 text-gray-700">
+                <li class="mb-2">https://www.googleapis.com/auth/spreadsheets.readonly - For reading sheet data</li>
+                <li class="mb-2">https://www.googleapis.com/auth/drive.metadata.readonly - For validating sheet existence</li>
+            </ul>
+        </section>
+
+        <footer class="pt-8 border-t border-gray-200">
+            <p class="text-gray-600 text-sm">
+                <i class="fas fa-code mr-2"></i>Sheet Management API Documentation &copy; 2025
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
