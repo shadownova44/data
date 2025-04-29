@@ -1,0 +1,521 @@
+/**
+ * Admin Form Validation
+ * Comprehensive client-side validation for admin forms
+ */
+
+// Wait for DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all validation functions
+    initUserFormValidation();
+    initSheetFormValidation();
+    initCampaignFormValidation();
+    initClientFormValidation();
+    initReportFormValidation();
+    initApiSettingsValidation();
+    
+    // Add general form handlers
+    setupGeneralFormHandlers();
+});
+
+/**
+ * User Management Form Validation
+ */
+function initUserFormValidation() {
+    const addUserForm = document.getElementById('addUserForm');
+    const editUserForm = document.getElementById('editUserForm');
+    
+    if (addUserForm) {
+        addUserForm.addEventListener('submit', function(e) {
+            if (!validateUserForm(this)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+    
+    if (editUserForm) {
+        editUserForm.addEventListener('submit', function(e) {
+            if (!validateUserForm(this, true)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+}
+
+function validateUserForm(form, isEdit = false) {
+    clearErrors();
+    let isValid = true;
+    
+    // Username validation
+    const username = form.querySelector('[name="username"]');
+    if (username) {
+        if (!username.value.trim()) {
+            showError(username, 'Username is required');
+            isValid = false;
+        } else if (username.value.length < 3) {
+            showError(username, 'Username must be at least 3 characters');
+            isValid = false;
+        } else if (username.value.length > 50) {
+            showError(username, 'Username cannot exceed 50 characters');
+            isValid = false;
+        } else if (!/^[a-zA-Z0-9_]+$/.test(username.value)) {
+            showError(username, 'Username can only contain letters, numbers, and underscores');
+            isValid = false;
+        }
+    }
+    
+    // Password validation (only required for new users or password changes)
+    const password = form.querySelector('[name="password"]');
+    const confirmPassword = form.querySelector('[name="confirm_password"]');
+    
+    if (password && (!isEdit || password.value.trim())) {
+        if (!isEdit && !password.value.trim()) {
+            showError(password, 'Password is required');
+            isValid = false;
+        } else if (password.value.length < 8) {
+            showError(password, 'Password must be at least 8 characters');
+            isValid = false;
+        } else if (!/[A-Z]/.test(password.value)) {
+            showError(password, 'Password must contain at least one uppercase letter');
+            isValid = false;
+        } else if (!/[a-z]/.test(password.value)) {
+            showError(password, 'Password must contain at least one lowercase letter');
+            isValid = false;
+        } else if (!/[0-9]/.test(password.value)) {
+            showError(password, 'Password must contain at least one number');
+            isValid = false;
+        } else if (confirmPassword && password.value !== confirmPassword.value) {
+            showError(confirmPassword, 'Passwords do not match');
+            isValid = false;
+        }
+    }
+    
+    // Role validation
+    const role = form.querySelector('[name="role"]');
+    if (role && !role.value) {
+        showError(role, 'Please select a role');
+        isValid = false;
+    }
+    
+    return isValid;
+}
+
+/**
+ * Google Sheet Management Form Validation
+ */
+function initSheetFormValidation() {
+    const sheetForm = document.getElementById('sheetForm');
+    
+    if (sheetForm) {
+        sheetForm.addEventListener('submit', function(e) {
+            if (!validateSheetForm(this)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+}
+
+function validateSheetForm(form) {
+    clearErrors();
+    let isValid = true;
+    
+    // Month selection validation
+    const monthSelect = form.querySelector('[name="month_name"]');
+    if (monthSelect && !monthSelect.value) {
+        showError(monthSelect, 'Please select a month');
+        isValid = false;
+    }
+    
+    // Google Sheet URL validation
+    const sheetUrl = form.querySelector('[name="sheet_url"]');
+    if (sheetUrl) {
+        if (!sheetUrl.value.trim()) {
+            showError(sheetUrl, 'Google Sheet URL is required');
+            isValid = false;
+        } else if (!isValidGoogleSheetUrl(sheetUrl.value)) {
+            showError(sheetUrl, 'Please enter a valid Google Sheet URL');
+            isValid = false;
+        }
+    }
+    
+    return isValid;
+}
+
+function isValidGoogleSheetUrl(url) {
+    // Basic validation for Google Sheets URL
+    return url.includes('docs.google.com/spreadsheets/d/') || 
+           url.includes('sheets.google.com/');
+}
+
+/**
+ * Campaign Upload Form Validation
+ */
+function initCampaignFormValidation() {
+    const campaignForm = document.getElementById('campaignUploadForm');
+    
+    if (campaignForm) {
+        campaignForm.addEventListener('submit', function(e) {
+            if (!validateCampaignForm(this)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+}
+
+function validateCampaignForm(form) {
+    clearErrors();
+    let isValid = true;
+    
+    // Campaign name validation
+    const campaignName = form.querySelector('[name="campaign_name"]');
+    if (campaignName) {
+        if (!campaignName.value.trim()) {
+            showError(campaignName, 'Campaign name is required');
+            isValid = false;
+        } else if (campaignName.value.length > 100) {
+            showError(campaignName, 'Campaign name cannot exceed 100 characters');
+            isValid = false;
+        }
+    }
+    
+    // CSV file validation
+    const csvFile = form.querySelector('[name="campaign_file"]');
+    if (csvFile) {
+        if (!csvFile.files || !csvFile.files[0]) {
+            showError(csvFile, 'Please select a CSV file to upload');
+            isValid = false;
+        } else {
+            const fileName = csvFile.files[0].name;
+            if (!fileName.toLowerCase().endsWith('.csv')) {
+                showError(csvFile, 'Only CSV files are allowed');
+                isValid = false;
+            }
+        }
+    }
+    
+    return isValid;
+}
+
+/**
+ * Client Form Validation
+ */
+function initClientFormValidation() {
+    const clientForm = document.getElementById('clientForm');
+    
+    if (clientForm) {
+        clientForm.addEventListener('submit', function(e) {
+            if (!validateClientForm(this)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+    
+    // Add event listener for deposit amount to update tag
+    const depositAmount = document.querySelector('[name="deposit_amount"]');
+    if (depositAmount) {
+        depositAmount.addEventListener('input', updateDepositTag);
+    }
+}
+
+function validateClientForm(form) {
+    clearErrors();
+    let isValid = true;
+    
+    // Client ID/Name validation
+    const clientIdName = form.querySelector('[name="client_id_name"]');
+    if (clientIdName) {
+        if (!clientIdName.value.trim()) {
+            showError(clientIdName, 'Client ID/Name is required');
+            isValid = false;
+        } else if (clientIdName.value.length > 100) {
+            showError(clientIdName, 'Client ID/Name cannot exceed 100 characters');
+            isValid = false;
+        }
+    }
+    
+    // Mobile number validation
+    const mobileNumber = form.querySelector('[name="mobile_number"]');
+    if (mobileNumber) {
+        if (!mobileNumber.value.trim()) {
+            showError(mobileNumber, 'Mobile number is required');
+            isValid = false;
+        } else if (!/^\d{10,15}$/.test(mobileNumber.value.replace(/[^0-9]/g, ''))) {
+            showError(mobileNumber, 'Please enter a valid mobile number (10-15 digits)');
+            isValid = false;
+        }
+    }
+    
+    // Deposit amount validation
+    const depositAmount = form.querySelector('[name="deposit_amount"]');
+    if (depositAmount) {
+        if (depositAmount.value.trim() && isNaN(parseFloat(depositAmount.value))) {
+            showError(depositAmount, 'Please enter a valid number for deposit amount');
+            isValid = false;
+        } else if (parseFloat(depositAmount.value) < 0) {
+            showError(depositAmount, 'Deposit amount cannot be negative');
+            isValid = false;
+        }
+    }
+    
+    return isValid;
+}
+
+function updateDepositTag() {
+    const amount = parseFloat(this.value) || 0;
+    const depositTagField = document.querySelector('[name="deposit_tag"]');
+    
+    if (depositTagField) {
+        let tag = '';
+        
+        if (amount < 5000) tag = "Under 5K";
+        else if (amount < 10000) tag = "Under 10K";
+        else if (amount < 15000) tag = "Under 15K";
+        else if (amount < 20000) tag = "Under 20K";
+        else if (amount < 30000) tag = "Under 30K";
+        else if (amount < 50000) tag = "Under 50K";
+        else tag = "More than 50K";
+        
+        depositTagField.value = tag;
+    }
+}
+
+/**
+ * Report Form Validation
+ */
+function initReportFormValidation() {
+    const reportForm = document.getElementById('reportForm');
+    
+    if (reportForm) {
+        reportForm.addEventListener('submit', function(e) {
+            if (!validateReportForm(this)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+}
+
+function validateReportForm(form) {
+    clearErrors();
+    let isValid = true;
+    
+    // Report type validation
+    const reportType = form.querySelector('[name="report_type"]');
+    if (reportType && !reportType.value) {
+        showError(reportType, 'Please select a report type');
+        isValid = false;
+    }
+    
+    // Date range validation
+    const dateFrom = form.querySelector('[name="date_from"]');
+    const dateTo = form.querySelector('[name="date_to"]');
+    
+    if (dateFrom && dateTo) {
+        if (dateFrom.value && dateTo.value) {
+            // Compare dates if both are provided
+            const fromDate = new Date(dateFrom.value);
+            const toDate = new Date(dateTo.value);
+            
+            if (fromDate > toDate) {
+                showError(dateTo, 'End date cannot be earlier than start date');
+                isValid = false;
+            }
+        }
+    }
+    
+    return isValid;
+}
+
+/**
+ * API Settings Validation
+ */
+function initApiSettingsValidation() {
+    const apiSettingsForm = document.getElementById('apiSettingsForm');
+    
+    if (apiSettingsForm) {
+        apiSettingsForm.addEventListener('submit', function(e) {
+            if (!validateApiSettingsForm(this)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+}
+
+function validateApiSettingsForm(form) {
+    clearErrors();
+    let isValid = true;
+    
+    // Credentials file validation
+    const credentialsFile = form.querySelector('[name="credentials_file"]');
+    if (credentialsFile) {
+        if (!credentialsFile.files || !credentialsFile.files[0]) {
+            showError(credentialsFile, 'Please select a credentials file to upload');
+            isValid = false;
+        } else {
+            const fileName = credentialsFile.files[0].name;
+            if (!fileName.toLowerCase().endsWith('.json')) {
+                showError(credentialsFile, 'Only JSON files are allowed');
+                isValid = false;
+            }
+        }
+    }
+    
+    return isValid;
+}
+
+/**
+ * General Form Handlers and Utilities
+ */
+function setupGeneralFormHandlers() {
+    // Add input event listeners to clear errors on input
+    document.querySelectorAll('input, select, textarea').forEach(element => {
+        element.addEventListener('input', function() {
+            clearErrorForElement(this);
+        });
+        
+        element.addEventListener('change', function() {
+            clearErrorForElement(this);
+        });
+    });
+    
+    // Date picker initialization if needed
+    initDatePickers();
+    
+    // File input custom styling
+    initCustomFileInputs();
+}
+
+function initDatePickers() {
+    // If using a date picker library, initialize it here
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach(input => {
+        // Custom date picker initialization if needed
+    });
+}
+
+function initCustomFileInputs() {
+    // Custom styling for file inputs
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            // Get the file name
+            const fileName = this.files[0] ? this.files[0].name : 'No file chosen';
+            
+            // Get the label or create a span to display the file name
+            let fileNameDisplay = this.nextElementSibling;
+            if (!fileNameDisplay || !fileNameDisplay.classList.contains('file-name')) {
+                fileNameDisplay = document.createElement('span');
+                fileNameDisplay.classList.add('file-name');
+                this.parentNode.insertBefore(fileNameDisplay, this.nextSibling);
+            }
+            
+            fileNameDisplay.textContent = fileName;
+        });
+    });
+}
+
+/**
+ * Error Handling Functions
+ */
+function showError(element, message) {
+    // Clear any existing error for this element
+    clearErrorForElement(element);
+    
+    // Create error message element
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message text-red-500 text-sm mt-1';
+    errorDiv.textContent = message;
+    
+    // Add error class to the input
+    element.classList.add('border-red-500');
+    
+    // Insert error message after the element
+    element.parentNode.insertBefore(errorDiv, element.nextSibling);
+    
+    // Scroll to the first error
+    if (document.querySelector('.error-message') === errorDiv) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+function clearErrorForElement(element) {
+    // Remove error class
+    element.classList.remove('border-red-500');
+    
+    // Remove error message if it exists
+    const nextSibling = element.nextElementSibling;
+    if (nextSibling && nextSibling.classList.contains('error-message')) {
+        nextSibling.remove();
+    }
+}
+
+function clearErrors() {
+    // Remove all error messages
+    document.querySelectorAll('.error-message').forEach(el => el.remove());
+    
+    // Remove all error classes
+    document.querySelectorAll('.border-red-500').forEach(el => {
+        el.classList.remove('border-red-500');
+    });
+}
+
+/**
+ * Additional Utility Functions
+ */
+
+// Format currency
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(amount);
+}
+
+// Format date
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+}
+
+// Validate mobile number with formatting
+function formatMobileNumber(input) {
+    // Remove non-numeric characters
+    let number = input.value.replace(/\D/g, '');
+    
+    // Enforce 10-15 digit limit
+    number = number.substring(0, 15);
+    
+    // Format the number with spaces for readability
+    if (number.length > 5) {
+        number = number.replace(/(\d{5})(\d{1,5})/, '$1 $2');
+    }
+    if (number.length > 10) {
+        number = number.replace(/(\d{5})(\d{5})(\d{1,5})/, '$1 $2 $3');
+    }
+    
+    input.value = number;
+}
+
+// Toggle password visibility
+function togglePasswordVisibility(buttonElement) {
+    const passwordInput = buttonElement.previousElementSibling;
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        buttonElement.innerHTML = '<i class="fas fa-eye-slash"></i>';
+    } else {
+        passwordInput.type = 'password';
+        buttonElement.innerHTML = '<i class="fas fa-eye"></i>';
+    }
+}
