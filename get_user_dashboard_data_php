@@ -1,0 +1,194 @@
+<?php
+// get_user_dashboard_data.php - AJAX endpoint for real-time user dashboard updates
+
+// Start session
+session_start();
+
+// Include configuration and functions
+require_once 'config.php';
+require_once 'functions.php';
+
+// Set headers for JSON response
+header('Content-Type: application/json');
+
+// Check if user is logged in
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'user') {
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Authentication required'
+    ]);
+    exit;
+}
+
+try {
+    // Get current user ID
+    $userId = $_SESSION['user_id'];
+    $today = date('Y-m-d');
+    $yesterday = date('Y-m-d', strtotime('-1 day'));
+    
+    // Initialize data array
+    $data = [
+        'status' => 'success',
+        'timestamp' => date('Y-m-d H:i:s')
+    ];
+    
+    // Get today's calls done
+    $query = "SELECT COUNT(*) as total FROM followups 
+              WHERE user_id = :user_id AND date = :today AND status = 'call_done'";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':user_id', $userId);
+    $stmt->bindParam(':today', $today);
+    $stmt->execute();
+    $data['callsDone'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Today's IDs created
+    $query = "SELECT COUNT(*) as total FROM followups 
+              WHERE user_id = :user_id AND date = :today AND status = 'id_created'";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':user_id', $userId);
+    $stmt->bindParam(':today', $today);
+    $stmt->execute();
+    $data['idsCreated'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Yesterday's calls (for comparison)
+    $query = "SELECT COUNT(*) as total FROM followups 
+              WHERE user_id = :user_id AND date = :yesterday AND status = 'call_done'";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':user_id', $userId);
+    $stmt->bindParam(':yesterday', $yesterday);
+    $stmt->execute();
+    $yesterdayCalls = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Calculate percentage change
+    $data['callsChange'] = ($yesterdayCalls > 0) 
+        ? round((($data['callsDone'] - $yesterdayCalls) / $yesterdayCalls) * 100, 1) 
+        : 0;
+    
+    // Regular clients to call
+    $query = "SELECT COUNT(*) as total FROM daily_entries de 
+              LEFT JOIN followups f ON de.client_id = f.client_id AND f.date = de.fetched_date
+              WHERE de.fetched_date = :today AND f.id IS NULL";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':today', $today);
+    $stmt->execute();
+    $data['regularClientsToCall'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Special follow-ups assigned
+    $query = "SELECT COUNT(*) as total FROM special_followups 
+              WHERE assigned_user = :user_id AND status = 'pending'";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':user_id', $userId);
+    $stmt->execute();
+    $data['specialFollowups'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Campaign calls assigned
+    $query = "SELECT COUNT(*) as total FROM campaign_clients 
+              WHERE assigned_user = :user_id AND status = 'pending'";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':user_id', $userId);
+    $stmt->execute();
+    $data['campaignCalls'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Weekly performance data (last 7 days)
+    $query = "SELECT DATE_FORMAT(date, '%a') as day_name, 
+              COUNT(CASE WHEN status = 'call_done' THEN 1 END) as calls,
+              COUNT(CASE WHEN status = 'id_created' THEN 1 END) as ids
+              FROM followups 
+              WHERE user_id = :user_id 
+              AND date BETWEEN DATE_SUB(:today, INTERVAL 6 DAY) AND :today
+              GROUP BY date
+              ORDER BY date ASC";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':user_id', $userId);
+    $stmt->bindParam(':today', $today);
+    $stmt->execute();
+    $data['weeklyPerformance'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Recent activity HTML
+    $query = "SELECT 'call' as type, f.created_at, mc.client_id_name, f.remark
+              FROM followups f
+              JOIN master_clients mc ON f.client_id = mc.id
+              WHERE f.user_id = :user_id AND f.status = 'call_done'
+              UNION
+              SELECT 'id' as type, f.created_at, mc.client_id_name, f.remark
+              FROM followups f
+              JOIN master_clients mc ON f.client_id = mc.id
+              WHERE f.user_id = :user_id AND f.status = 'id_created'
+              ORDER BY created_at DESC
+              LIMIT 5";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':user_id', $userId);
+    $stmt->execute();
+    $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Create activity HTML
+    $activityHtml = '';
+    foreach ($activities as $activity) {
+        $time = new DateTime($activity['created_at']);
+        $timeAgo = time_elapsed_string($activity['created_at']);
+        $icon = ($activity['type'] == 'call') ? 'fa-phone-alt' : 'fa-id-card';
+        $action = ($activity['type'] == 'call') ? 'Called' : 'Created ID for';
+        
+        $activityHtml .= '<div class="activity-item">
+            <div class="activity-icon"><i class="fas '.$icon.'"></i></div>
+            <div class="activity-content">
+                <div class="activity-title">'.$action.' '.$activity['client_id_name'].'</div>
+                <div class="activity-text">'.$activity['remark'].'</div>
+                <div class="activity-time">'.$timeAgo.'</div>
+            </div>
+        </div>';
+    }
+    $data['activityHtml'] = $activityHtml;
+    
+    // User notifications
+    $query = "SELECT * FROM user_notifications 
+              WHERE user_id = :user_id AND is_read = 0
+              ORDER BY created_at DESC LIMIT 5";
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':user_id', $userId);
+    $stmt->execute();
+    $data['notifications'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $data['notificationCount'] = count($data['notifications']);
+    
+    // Return JSON response
+    echo json_encode($data);
+    
+} catch (PDOException $e) {
+    // Return error
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Database error: ' . $e->getMessage()
+    ]);
+}
+
+// Helper function for time ago
+function time_elapsed_string($datetime, $full = false) {
+    $now = new DateTime;
+    $ago = new DateTime($datetime);
+    $diff = $now->diff($ago);
+
+    $diff->w = floor($diff->d / 7);
+    $diff->d -= $diff->w * 7;
+
+    $string = array(
+        'y' => 'year',
+        'm' => 'month',
+        'w' => 'week',
+        'd' => 'day',
+        'h' => 'hour',
+        'i' => 'minute',
+        's' => 'second',
+    );
+    
+    foreach ($string as $k => &$v) {
+        if ($diff->$k) {
+            $v = $diff->$k . ' ' . $v . ($diff->$k > 1 ? 's' : '');
+        } else {
+            unset($string[$k]);
+        }
+    }
+
+    if (!$full) $string = array_slice($string, 0, 1);
+    return $string ? implode(', ', $string) . ' ago' : 'just now';
+}
+?>
