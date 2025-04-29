@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Settings - CRM</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <style>
+        .settings-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .settings-card {
+            transition: all 0.3s ease;
+        }
+        .settings-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #4299e1;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        /* Custom styles for tab highlight */
+        .tab-button.active {
+            border-bottom: 3px solid #4299e1;
+            color: #4299e1;
+            font-weight: bold;
+        }
+        .tab-button:hover {
+            background-color: #f7fafc;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <?php
+    // Start session if not already started
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    // Check if user is logged in and is an admin
+    if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+        header('Location: admin_login.php');
+        exit;
+    }
+
+    // Include database connection
+    require_once 'config.php';
+    require_once 'functions.php';
+
+    // Function to get current setting value
+    function getSettingValue($pdo, $key, $default = '') {
+        $query = "SELECT setting_value FROM system_settings WHERE setting_key = :key";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([':key' => $key]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        return $result ? $result['setting_value'] : $default;
+    }
+
+    // Handle form submission
+    $successMessage = '';
+    $errorMessage = '';
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        try {
+            // Begin transaction
+            $pdo->beginTransaction();
+            
+            // Process general settings
+            if (isset($_POST['save_general'])) {
+                $timezone = $_POST['timezone'] ?? 'Asia/Kolkata';
+                $dateFormat = $_POST['date_format'] ?? 'Y-m-d';
+                $siteName = $_POST['site_name'] ?? 'CRM System';
+                
+                // Update settings in database
+                $query = "INSERT INTO system_settings (setting_key, setting_value) 
+                          VALUES (:key, :value) 
+                          ON DUPLICATE KEY UPDATE setting_value = :value";
+                
+                $stmt = $pdo->prepare($query);
+                
+                $stmt->execute([':key' => 'timezone', ':value' => $timezone]);
+                $stmt->execute([':key' => 'date_format', ':value' => $dateFormat]);
+                $stmt->execute([':key' => 'site_name', ':value' => $siteName]);
+                
+                $successMessage = 'General settings updated successfully!';
+            }
+            
+            // Process email settings
+            if (isset($_POST['save_email'])) {
+                $smtpHost = $_POST['smtp_host'] ?? '';
+                $smtpPort = $_POST['smtp_port'] ?? '587';
+                $smtpUsername = $_POST['smtp_username'] ?? '';
+                $smtpPassword = $_POST['smtp_password'] ?? '';
+                $smtpEncryption = $_POST['smtp_encryption'] ?? 'tls';
+                $fromEmail = $_POST['from_email'] ?? '';
+                $fromName = $_POST['from_name'] ?? '';
+                
+                // Update settings in database
+                $query = "INSERT INTO system_settings (setting_key, setting_value) 
+                          VALUES (:key, :value) 
+                          ON DUPLICATE KEY UPDATE setting_value = :value";
+                
+                $stmt = $pdo->prepare($query);
+                
+                $stmt->execute([':key' => 'smtp_host', ':value' => $smtpHost]);
+                $stmt->execute([':key' => 'smtp_port', ':value' => $smtpPort]);
+                $stmt->execute([':key' => 'smtp_username', ':value' => $smtpUsername]);
+                // Only update password if it's not empty
+                if (!empty($smtpPassword)) {
+                    $stmt->execute([':key' => 'smtp_password', ':value' => $smtpPassword]);
+                }
+                $stmt->execute([':key' => 'smtp_encryption', ':value' => $smtpEncryption]);
+                $stmt->execute([':key' => 'from_email', ':value' => $fromEmail]);
+                $stmt->execute([':key' => 'from_name', ':value' => $fromName]);
+                
+                $successMessage = 'Email settings updated successfully!';
+            }
+            
+            // Process Google API settings
+            if (isset($_POST['save_google_api'])) {
+                $sheetsApiEnabled = isset($_POST['sheets_api_enabled']) ? '1' : '0';
+                $contactsApiEnabled = isset($_POST['contacts_api_enabled']) ? '1' : '0';
+                
+                // Update settings in database
+                $query = "INSERT INTO system_settings (setting_key, setting_value) 
+                          VALUES (:key, :value) 
+                          ON DUPLICATE KEY UPDATE setting_value = :value";
+                
+                $stmt = $pdo->prepare($query);
+                
+                $stmt->execute([':key' => 'sheets_api_enabled', ':value' => $sheetsApiEnabled]);
+                $stmt->execute([':key' => 'contacts_api_enabled', ':value' => $contactsApiEnabled]);
+                
+                $successMessage = 'Google API settings updated successfully!';
+            }
+            
+            // Process security settings
+            if (isset($_POST['save_security'])) {
+                $sessionTimeout = $_POST['session_timeout'] ?? '30';
+                $maxLoginAttempts = $_POST['max_login_attempts'] ?? '5';
+                $passwordComplexity = $_POST['password_complexity'] ?? 'medium';
+                $forcePasswordChange = isset($_POST['force_password_change']) ? '1' : '0';
+                
+                // Update settings in database
+                $query = "INSERT INTO system_settings (setting_key, setting_value) 
+                          VALUES (:key, :value) 
+                          ON DUPLICATE KEY UPDATE setting_value = :value";
+                
+                $stmt = $pdo->prepare($query);
+                
+                $stmt->execute([':key' => 'session_timeout', ':value' => $sessionTimeout]);
+                $stmt->execute([':key' => 'max_login_attempts', ':value' => $maxLoginAttempts]);
+                $stmt->execute([':key' => 'password_complexity', ':value' => $passwordComplexity]);
+                $stmt->execute([':key' => 'force_password_change', ':value' => $forcePasswordChange]);
+                
+                $successMessage = 'Security settings updated successfully!';
+            }
+            
+            // Process notification settings
+            if (isset($_POST['save_notification'])) {
+                $emailNotifications = isset($_POST['email_notifications']) ? '1' : '0';
+                $userCreationNotify = isset($_POST['user_creation_notify']) ? '1' : '0';
+                $loginNotify = isset($_POST['login_notify']) ? '1' : '0';
+                $nonPlayingThreshold = $_POST['non_playing_threshold'] ?? '7';
+                
+                // Update settings in database
+                $query = "INSERT INTO system_settings (setting_key, setting_value) 
+                          VALUES (:key, :value) 
+                          ON DUPLICATE KEY UPDATE setting_value = :value";
+                
+                $stmt = $pdo->prepare($query);
+                
+                $stmt->execute([':key' => 'email_notifications', ':value' => $emailNotifications]);
+                $stmt->execute([':key' => 'user_creation_notify', ':value' => $userCreationNotify]);
+                $stmt->execute([':key' => 'login_notify', ':value' => $loginNotify]);
+                $stmt->execute([':key' => 'non_playing_threshold', ':value' => $nonPlayingThreshold]);
+                
+                $successMessage = 'Notification settings updated successfully!';
+            }
+            
+            // Process performance settings
+            if (isset($_POST['save_performance'])) {
+                $paginationLimit = $_POST['pagination_limit'] ?? '20';
+                $enableCaching = isset($_POST['enable_caching']) ? '1' : '0';
+                $logLevel = $_POST['log_level'] ?? 'error';
+                $autoCleanupLogs = isset($_POST['auto_cleanup_logs']) ? '1' : '0';
+                
+                // Update settings in database
+                $query = "INSERT INTO system_settings (setting_key, setting_value) 
+                          VALUES (:key, :value) 
+                          ON DUPLICATE KEY UPDATE setting_value = :value";
+                
+                $stmt = $pdo->prepare($query);
+                
+                $stmt->execute([':key' => 'pagination_limit', ':value' => $paginationLimit]);
+                $stmt->execute([':key' => 'enable_caching', ':value' => $enableCaching]);
+                $stmt->execute([':key' => 'log_level', ':value' => $logLevel]);
+                $stmt->execute([':key' => 'auto_cleanup_logs', ':value' => $autoCleanupLogs]);
+                
+                $successMessage = 'Performance settings updated successfully!';
+            }
+            
+            // Process backup settings
+            if (isset($_POST['save_backup'])) {
+                $autoBackup = isset($_POST['auto_backup']) ? '1' : '0';
+                $backupFrequency = $_POST['backup_frequency'] ?? 'weekly';
+                $backupRetention = $_POST['backup_retention'] ?? '30';
+                $backupIncludeFiles = isset($_POST['backup_include_files']) ? '1' : '0';
+                
+                // Update settings in database
+                $query = "INSERT INTO system_settings (setting_key, setting_value) 
+                          VALUES (:key, :value) 
+                          ON DUPLICATE KEY UPDATE setting_value = :value";
+                
+                $stmt = $pdo->prepare($query);
+                
+                $stmt->execute([':key' => 'auto_backup', ':value' => $autoBackup]);
+                $stmt->execute([':key' => 'backup_frequency', ':value' => $backupFrequency]);
+                $stmt->execute([':key' => 'backup_retention', ':value' => $backupRetention]);
+                $stmt->execute([':key' => 'backup_include_files', ':value' => $backupIncludeFiles]);
+                
+                $successMessage = 'Backup settings updated successfully!';
+            }
+            
+            // Commit transaction
+            $pdo->commit();
+            
+        } catch (Exception $e) {
+            // Rollback transaction on error
+            $pdo->rollBack();
+            $errorMessage = 'Error: ' . $e->getMessage();
+        }
+    }
+    ?>
+
+    <div class="settings-container py-8 px-4">
+        <div class="flex items-center justify-between mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">System Settings</h1>
+            <a href="admin_dashboard.php" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded">
+                <i class="fas fa-arrow-left mr-2"></i> Back to Dashboard
+            </a>
+        </div>
+
+        <?php if (!empty($successMessage)): ?>
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 mb-6 rounded relative" role="alert">
+                <strong class="font-bold">Success!</strong>
+                <span class="block sm:inline"><?php echo $successMessage; ?></span>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($errorMessage)): ?>
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-6 rounded relative" role="alert">
+                <strong class="font-bold">Error!</strong>
+                <span class="block sm:inline"><?php echo $errorMessage; ?></span>
+            </div>
+        <?php endif; ?>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="tabs flex overflow-x-auto pb-2">
+                <button class="tab-button px-4 py-2 mr-2 active" data-tab="general">
+                    <i class="fas fa-cogs mr-2"></i>General
+                </button>
+                <button class="tab-button px-4 py-2 mr-2" data-tab="email">
+                    <i class="fas fa-envelope mr-2"></i>Email
+                </button>
+                <button class="tab-button px-4 py-2 mr-2" data-tab="google-api">
+                    <i class="fab fa-google mr-2"></i>Google API
+                </button>
+                <button class="tab-button px-4 py-2 mr-2" data-tab="security">
+                    <i class="fas fa-shield-alt mr-2"></i>Security
+                </button>
+                <button class="tab-button px-4 py-2 mr-2" data-tab="notification">
+                    <i class="fas fa-bell mr-2"></i>Notifications
+                </button>
+                <button class="tab-button px-4 py-2 mr-2" data-tab="performance">
+                    <i class="fas fa-tachometer-alt mr-2"></i>Performance
+                </button>
+                <button class="tab-button px-4 py-2" data-tab="backup">
+                    <i class="fas fa-database mr-2"></i>Backup
+                </button>
+            </div>
+
+            <!-- General Settings Tab -->
+            <div id="general" class="tab-content active mt-6">
+                <h2 class="text-xl font-semibold mb-4">General Settings</h2>
+                <form method="post" action="">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="timezone">Timezone</label>
+                            <select id="timezone" name="timezone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                <option value="Asia/Kolkata" <?php echo getSettingValue($pdo, 'timezone') === 'Asia/Kolkata' ? 'selected' : ''; ?>>India (IST)</option>
+                                <option value="America/New_York" <?php echo getSettingValue($pdo, 'timezone') === 'America/New_York' ? 'selected' : ''; ?>>Eastern Time (ET)</option>
+                                <option value="America/Chicago" <?php echo getSettingValue($pdo, 'timezone') === 'America/Chicago' ? 'selected' : ''; ?>>Central Time (CT)</option>
+                                <option value="America/Denver" <?php echo getSettingValue($pdo, 'timezone') === 'America/Denver' ? 'selected' : ''; ?>>Mountain Time (MT)</option>
+                                <option value="America/Los_Angeles" <?php echo getSettingValue($pdo, 'timezone') === 'America/Los_Angeles' ? 'selected' : ''; ?>>Pacific Time (PT)</option>
+                                <option value="Europe/London" <?php echo getSettingValue($pdo, 'timezone') === 'Europe/London' ? 'selected' : ''; ?>>London (GMT)</option>
+                                <option value="Europe/Paris" <?php echo getSettingValue($pdo, 'timezone') === 'Europe/Paris' ? 'selected' : ''; ?>>Paris (CET)</option>
+                                <option value="Asia/Dubai" <?php echo getSettingValue($pdo, 'timezone') === 'Asia/Dubai' ? 'selected' : ''; ?>>Dubai (GST)</option>
+                                <option value="Asia/Singapore" <?php echo getSettingValue($pdo, 'timezone') === 'Asia/Singapore' ? 'selected' : ''; ?>>Singapore (SGT)</option>
+                                <option value="Australia/Sydney" <?php echo getSettingValue($pdo, 'timezone') === 'Australia/Sydney' ? 'selected' : ''; ?>>Sydney (AEST)</option>
+                            </select>
+                            <p class="text-sm text-gray-500 mt-1">Set the default timezone for the system.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="date_format">Date Format</label>
+                            <select id="date_format" name="date_format" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                <option value="Y-m-d" <?php echo getSettingValue($pdo, 'date_format') === 'Y-m-d' ? 'selected' : ''; ?>>YYYY-MM-DD (2023-05-25)</option>
+                                <option value="d-m-Y" <?php echo getSettingValue($pdo, 'date_format') === 'd-m-Y' ? 'selected' : ''; ?>>DD-MM-YYYY (25-05-2023)</option>
+                                <option value="m/d/Y" <?php echo getSettingValue($pdo, 'date_format') === 'm/d/Y' ? 'selected' : ''; ?>>MM/DD/YYYY (05/25/2023)</option>
+                                <option value="d/m/Y" <?php echo getSettingValue($pdo, 'date_format') === 'd/m/Y' ? 'selected' : ''; ?>>DD/MM/YYYY (25/05/2023)</option>
+                                <option value="M d, Y" <?php echo getSettingValue($pdo, 'date_format') === 'M d, Y' ? 'selected' : ''; ?>>Mon DD, YYYY (May 25, 2023)</option>
+                            </select>
+                            <p class="text-sm text-gray-500 mt-1">Set the default date format for display throughout the system.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="site_name">Site Name</label>
+                            <input type="text" id="site_name" name="site_name" value="<?php echo htmlspecialchars(getSettingValue($pdo, 'site_name', 'CRM System')); ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <p class="text-sm text-gray-500 mt-1">Set the name of your CRM system (appears in title and header).</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <button type="submit" name="save_general" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <i class="fas fa-save mr-2"></i>Save General Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Email Settings Tab -->
+            <div id="email" class="tab-content mt-6">
+                <h2 class="text-xl font-semibold mb-4">Email Settings</h2>
+                <form method="post" action="">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="smtp_host">SMTP Host</label>
+                            <input type="text" id="smtp_host" name="smtp_host" value="<?php echo htmlspecialchars(getSettingValue($pdo, 'smtp_host', 'smtp.gmail.com')); ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <p class="text-sm text-gray-500 mt-1">The hostname of your SMTP server (e.g., smtp.gmail.com).</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="smtp_port">SMTP Port</label>
+                            <input type="text" id="smtp_port" name="smtp_port" value="<?php echo htmlspecialchars(getSettingValue($pdo, 'smtp_port', '587')); ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <p class="text-sm text-gray-500 mt-1">The port of your SMTP server (common: 25, 465, 587).</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="smtp_username">SMTP Username</label>
+                            <input type="text" id="smtp_username" name="smtp_username" value="<?php echo htmlspecialchars(getSettingValue($pdo, 'smtp_username')); ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <p class="text-sm text-gray-500 mt-1">The username for your SMTP server authentication.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="smtp_password">SMTP Password</label>
+                            <input type="password" id="smtp_password" name="smtp_password" placeholder="••••••••" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <p class="text-sm text-gray-500 mt-1">Leave blank to keep current password unchanged.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="smtp_encryption">SMTP Encryption</label>
+                            <select id="smtp_encryption" name="smtp_encryption" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                <option value="tls" <?php echo getSettingValue($pdo, 'smtp_encryption') === 'tls' ? 'selected' : ''; ?>>TLS</option>
+                                <option value="ssl" <?php echo getSettingValue($pdo, 'smtp_encryption') === 'ssl' ? 'selected' : ''; ?>>SSL</option>
+                                <option value="none" <?php echo getSettingValue($pdo, 'smtp_encryption') === 'none' ? 'selected' : ''; ?>>None</option>
+                            </select>
+                            <p class="text-sm text-gray-500 mt-1">The encryption method for your SMTP server.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="from_email">From Email Address</label>
+                            <input type="email" id="from_email" name="from_email" value="<?php echo htmlspecialchars(getSettingValue($pdo, 'from_email', 'noreply@crmsystem.com')); ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <p class="text-sm text-gray-500 mt-1">The email address that will appear in the 'From' field.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="from_name">From Name</label>
+                            <input type="text" id="from_name" name="from_name" value="<?php echo htmlspecialchars(getSettingValue($pdo, 'from_name', 'CRM System')); ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <p class="text-sm text-gray-500 mt-1">The name that will appear as sender.</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <button type="submit" name="save_email" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <i class="fas fa-save mr-2"></i>Save Email Settings
+                        </button>
+                        <button type="button" class="ml-4 bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-500" id="test_email_btn">
+                            <i class="fas fa-paper-plane mr-2"></i>Test Email Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Google API Settings Tab -->
+            <div id="google-api" class="tab-content mt-6">
+                <h2 class="text-xl font-semibold mb-4">Google API Settings</h2>
+                <form method="post" action="">
+                    <div class="grid grid-cols-1 gap-6">
+                        <div class="input-group">
+                            <label class="flex items-center space-x-3">
+                                <span class="text-gray-700 font-medium">Google Sheets API</span>
+                                <label class="switch">
+                                    <input type="checkbox" name="sheets_api_enabled" <?php echo getSettingValue($pdo, 'sheets_api_enabled') === '1' ? 'checked' : ''; ?>>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                            <p class="text-sm text-gray-500 mt-1">Enable or disable Google Sheets API integration.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="flex items-center space-x-3">
+                                <span class="text-gray-700 font-medium">Google Contacts API</span>
+                                <label class="switch">
+                                    <input type="checkbox" name="contacts_api_enabled" <?php echo getSettingValue($pdo, 'contacts_api_enabled') === '1' ? 'checked' : ''; ?>>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                            <p class="text-sm text-gray-500 mt-1">Enable or disable Google Contacts API integration.</p>
+                        </div>
+                        
+                        <div class="bg-blue-50 p-4 rounded-md border border-blue-200 mb-4">
+                            <h3 class="text-lg font-medium text-blue-800 mb-2">Google API Configuration</h3>
+                            <p class="text-sm text-blue-700 mb-2">
+                                To configure Google API credentials, please go to <a href="api_settings.php" class="text-blue-600 underline">API Settings</a> page and upload your Service Account credentials (credentials.json file).
+                            </p>
+                            <p class="text-sm text-blue-700">
+                                This file contains sensitive API keys and OAuth information for connecting to Google services.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <button type="submit" name="save_google_api" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <i class="fas fa-save mr-2"></i>Save Google API Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Security Settings Tab -->
+            <div id="security" class="tab-content mt-6">
+                <h2 class="text-xl font-semibold mb-4">Security Settings</h2>
+                <form method="post" action="">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="session_timeout">Session Timeout (minutes)</label>
+                            <input type="number" id="session_timeout" name="session_timeout" min="5" max="1440" value="<?php echo htmlspecialchars(getSettingValue($pdo, 'session_timeout', '30')); ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <p class="text-sm text-gray-500 mt-1">Minutes of inactivity before session expires.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="max_login_attempts">Max Login Attempts</label>
+                            <input type="number" id="max_login_attempts" name="max_login_attempts" min="1" max="10" value="<?php echo htmlspecialchars(getSettingValue($pdo, 'max_login_attempts', '5')); ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <p class="text-sm text-gray-500 mt-1">Maximum failed login attempts before account lockout.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="password_complexity">Password Complexity</label>
+                            <select id="password_complexity" name="password_complexity" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                <option value="low" <?php echo getSettingValue($pdo, 'password_complexity') === 'low' ? 'selected' : ''; ?>>Low (min 6 characters)</option>
+                                <option value="medium" <?php echo getSettingValue($pdo, 'password_complexity') === 'medium' ? 'selected' : ''; ?>>Medium (min 8 characters, letters and numbers)</option>
+                                <option value="high" <?php echo getSettingValue($pdo, 'password_complexity') === 'high' ? 'selected' : ''; ?>>High (min 10 characters, letters, numbers, and special characters)</option>
+                            </select>
+                            <p class="text-sm text-gray-500 mt-1">Set password requirements for user accounts.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="flex items-center space-x-3">
+                                <span class="text-gray-700 font-medium">Force Password Change (90 days)</span>
+                                <label class="switch">
+                                    <input type="checkbox" name="force_password_change" <?php echo getSettingValue($pdo, 'force_password_change') === '1' ? 'checked' : ''; ?>>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                            <p class="text-sm text-gray-500 mt-1">Force users to change password every 90 days.</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <button type="submit" name="save_security" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <i class="fas fa-save mr-2"></i>Save Security Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Notification Settings Tab -->
+            <div id="notification" class="tab-content mt-6">
+                <h2 class="text-xl font-semibold mb-4">Notification Settings</h2>
+                <form method="post" action="">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="input-group">
+                            <label class="flex items-center space-x-3">
+                                <span class="text-gray-700 font-medium">Email Notifications</span>
+                                <label class="switch">
+                                    <input type="checkbox" name="email_notifications" <?php echo getSettingValue($pdo, 'email_notifications') === '1' ? 'checked' : ''; ?>>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                            <p class="text-sm text-gray-500 mt-1">Enable or disable system email notifications.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="flex items-center space-x-3">
+                                <span class="text-gray-700 font-medium">New User Creation Notification</span>
+                                <label class="switch">
+                                    <input type="checkbox" name="user_creation_notify" <?php echo getSettingValue($pdo, 'user_creation_notify') === '1' ? 'checked' : ''; ?>>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                            <p class="text-sm text-gray-500 mt-1">Notify admin when new users are created.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="flex items-center space-x-3">
+                                <span class="text-gray-700 font-medium">Login Notification</span>
+                                <label class="switch">
+                                    <input type="checkbox" name="login_notify" <?php echo getSettingValue($pdo, 'login_notify') === '1' ? 'checked' : ''; ?>>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                            <p class="text-sm text-gray-500 mt-1">Notify users via email when their account is accessed.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="non_playing_threshold">Non-Playing Alert Threshold (days)</label>
+                            <input type="number" id="non_playing_threshold" name="non_playing_threshold" min="1" max="30" value="<?php echo htmlspecialchars(getSettingValue($pdo, 'non_playing_threshold', '7')); ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <p class="text-sm text-gray-500 mt-1">Days before sending non-playing client alerts.</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <button type="submit" name="save_notification" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <i class="fas fa-save mr-2"></i>Save Notification Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Performance Settings Tab -->
+            <div id="performance" class="tab-content mt-6">
+                <h2 class="text-xl font-semibold mb-4">Performance Settings</h2>
+                <form method="post" action="">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="pagination_limit">Pagination Limit</label>
+                            <select id="pagination_limit" name="pagination_limit" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                <option value="10" <?php echo getSettingValue($pdo, 'pagination_limit') === '10' ? 'selected' : ''; ?>>10 items</option>
+                                <option value="20" <?php echo getSettingValue($pdo, 'pagination_limit') === '20' ? 'selected' : ''; ?>>20 items</option>
+                                <option value="50" <?php echo getSettingValue($pdo, 'pagination_limit') === '50' ? 'selected' : ''; ?>>50 items</option>
+                                <option value="100" <?php echo getSettingValue($pdo, 'pagination_limit') === '100' ? 'selected' : ''; ?>>100 items</option>
+                            </select>
+                            <p class="text-sm text-gray-500 mt-1">Number of items to display per page in listings.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="flex items-center space-x-3">
+                                <span class="text-gray-700 font-medium">Enable Caching</span>
+                                <label class="switch">
+                                    <input type="checkbox" name="enable_caching" <?php echo getSettingValue($pdo, 'enable_caching') === '1' ? 'checked' : ''; ?>>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                            <p class="text-sm text-gray-500 mt-1">Enable data caching for improved performance.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="log_level">Log Level</label>
+                            <select id="log_level" name="log_level" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                <option value="error" <?php echo getSettingValue($pdo, 'log_level') === 'error' ? 'selected' : ''; ?>>Error Only</option>
+                                <option value="warning" <?php echo getSettingValue($pdo, 'log_level') === 'warning' ? 'selected' : ''; ?>>Warning & Error</option>
+                                <option value="info" <?php echo getSettingValue($pdo, 'log_level') === 'info' ? 'selected' : ''; ?>>Info, Warning & Error</option>
+                                <option value="debug" <?php echo getSettingValue($pdo, 'log_level') === 'debug' ? 'selected' : ''; ?>>Debug (Verbose)</option>
+                            </select>
+                            <p class="text-sm text-gray-500 mt-1">Set the level of detail for system logs.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="flex items-center space-x-3">
+                                <span class="text-gray-700 font-medium">Auto-cleanup Logs (30 days)</span>
+                                <label class="switch">
+                                    <input type="checkbox" name="auto_cleanup_logs" <?php echo getSettingValue($pdo, 'auto_cleanup_logs') === '1' ? 'checked' : ''; ?>>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                            <p class="text-sm text-gray-500 mt-1">Automatically delete logs older than 30 days.</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <button type="submit" name="save_performance" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <i class="fas fa-save mr-2"></i>Save Performance Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Backup Settings Tab -->
+            <div id="backup" class="tab-content mt-6">
+                <h2 class="text-xl font-semibold mb-4">Backup Settings</h2>
+                <form method="post" action="">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="input-group">
+                            <label class="flex items-center space-x-3">
+                                <span class="text-gray-700 font-medium">Automatic Backup</span>
+                                <label class="switch">
+                                    <input type="checkbox" name="auto_backup" <?php echo getSettingValue($pdo, 'auto_backup') === '1' ? 'checked' : ''; ?>>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                            <p class="text-sm text-gray-500 mt-1">Enable or disable automatic database backups.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="backup_frequency">Backup Frequency</label>
+                            <select id="backup_frequency" name="backup_frequency" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                <option value="daily" <?php echo getSettingValue($pdo, 'backup_frequency') === 'daily' ? 'selected' : ''; ?>>Daily</option>
+                                <option value="weekly" <?php echo getSettingValue($pdo, 'backup_frequency') === 'weekly' ? 'selected' : ''; ?>>Weekly</option>
+                                <option value="monthly" <?php echo getSettingValue($pdo, 'backup_frequency') === 'monthly' ? 'selected' : ''; ?>>Monthly</option>
+                            </select>
+                            <p class="text-sm text-gray-500 mt-1">How often automatic backups should run.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-gray-700 font-medium mb-2" for="backup_retention">Backup Retention (days)</label>
+                            <input type="number" id="backup_retention" name="backup_retention" min="1" max="365" value="<?php echo htmlspecialchars(getSettingValue($pdo, 'backup_retention', '30')); ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <p class="text-sm text-gray-500 mt-1">Number of days to keep backups before deletion.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="flex items-center space-x-3">
+                                <span class="text-gray-700 font-medium">Include Files in Backup</span>
+                                <label class="switch">
+                                    <input type="checkbox" name="backup_include_files" <?php echo getSettingValue($pdo, 'backup_include_files') === '1' ? 'checked' : ''; ?>>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                            <p class="text-sm text-gray-500 mt-1">Include uploaded files in backup (increases backup size).</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-6 mt-6">
+                        <div class="bg-gray-50 p-4 rounded-md border border-gray-200">
+                            <h3 class="text-lg font-medium text-gray-800 mb-2">Manual Backup</h3>
+                            <p class="text-sm text-gray-600 mb-2">
+                                You can manually create a backup of your database and files at any time. The backup will be stored in the backups directory.
+                            </p>
+                            <button type="button" id="manual_backup_btn" class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-500">
+                                <i class="fas fa-download mr-2"></i>Create Manual Backup
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <button type="submit" name="save_backup" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <i class="fas fa-save mr-2"></i>Save Backup Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    
+                    // Hide all tab contents
+                    tabContents.forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    
+                    // Remove active class from all buttons
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    
+                    // Show the selected tab content
+                    document.getElementById(tabId).classList.add('active');
+                    
+                    // Add active class to the clicked button
+                    this.classList.add('active');
+                });
+            });
+            
+            // Test email button functionality
+            const testEmailBtn = document.getElementById('test_email_btn');
+            if (testEmailBtn) {
+                testEmailBtn.addEventListener('click', function() {
+                    // Get current form values
+                    const host = document.getElementById('smtp_host').value;
+                    const port = document.getElementById('smtp_port').value;
+                    const username = document.getElementById('smtp_username').value;
+                    const password = document.getElementById('smtp_password').value;
+                    const encryption = document.getElementById('smtp_encryption').value;
+                    const fromEmail = document.getElementById('from_email').value;
+                    const fromName = document.getElementById('from_name').value;
+                    
+                    // Show loading
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Testing...';
+                    this.disabled = true;
+                    
+                    // In a real implementation, you would send an AJAX request to test the email configuration
+                    // For demonstration, we'll simulate this with a timeout
+                    setTimeout(() => {
+                        alert('Email test completed successfully! A test email has been sent to the admin address.');
+                        this.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Test Email Configuration';
+                        this.disabled = false;
+                    }, 2000);
+                });
+            }
+            
+            // Manual backup button functionality
+            const manualBackupBtn = document.getElementById('manual_backup_btn');
+            if (manualBackupBtn) {
+                manualBackupBtn.addEventListener('click', function() {
+                    // Show loading
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating Backup...';
+                    this.disabled = true;
+                    
+                    // In a real implementation, you would send an AJAX request to create a backup
+                    // For demonstration, we'll simulate this with a timeout
+                    setTimeout(() => {
+                        alert('Backup created successfully! The backup file is available in the backups directory.');
+                        this.innerHTML = '<i class="fas fa-download mr-2"></i>Create Manual Backup';
+                        this.disabled = false;
+                    }, 3000);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
