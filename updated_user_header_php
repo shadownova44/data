@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Panel - Client Calling & Follow-up CRM</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
+    <style>
+        /* Custom styles for active menu item */
+        .nav-active {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-left: 4px solid white;
+        }
+        
+        /* Smooth transitions for hover effects */
+        .nav-item {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        
+        .nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        /* Mobile menu transition */
+        .mobile-menu-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        /* Custom gradient for header */
+        .header-gradient {
+            background: linear-gradient(90deg, #1e40af, #3b82f6);
+        }
+        
+        /* Notification dot */
+        .notification-dot {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #ef4444;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Top Navigation Bar -->
+    <header class="header-gradient text-white shadow-md">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <!-- Logo and Title -->
+                <div class="flex items-center">
+                    <i class="fas fa-phone-alt text-2xl mr-2"></i>
+                    <span class="text-xl font-semibold">Client Calling & Follow-up CRM</span>
+                </div>
+                
+                <!-- Mobile Menu Button -->
+                <div class="block lg:hidden">
+                    <button id="mobile-menu-button" class="text-white focus:outline-none">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+                
+                <!-- User Info and Logout - Hidden on Mobile -->
+                <div class="hidden lg:flex items-center space-x-4">
+                    <!-- Notification Icon -->
+                    <div class="relative">
+                        <button class="text-white focus:outline-none p-2 rounded-full hover:bg-blue-700">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-dot"></span>
+                        </button>
+                    </div>
+                    
+                    <!-- User Dropdown -->
+                    <div class="relative" id="user-dropdown-container">
+                        <button class="flex items-center space-x-2 focus:outline-none" id="user-dropdown-button">
+                            <div class="w-8 h-8 rounded-full bg-blue-300 flex items-center justify-center">
+                                <i class="fas fa-user text-blue-800"></i>
+                            </div>
+                            <span>Welcome, John Doe</span>
+                            <i class="fas fa-chevron-down text-sm"></i>
+                        </button>
+                        
+                        <!-- Dropdown Menu (Hidden by Default) -->
+                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden" id="user-dropdown">
+                            <a href="user_profile.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-user-circle mr-2"></i> My Profile
+                            </a>
+                            <a href="user_reports.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-chart-line mr-2"></i> My Performance
+                            </a>
+                            <div class="border-t border-gray-100"></div>
+                            <a href="user_logout.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Menu (Hidden by Default) -->
+    <div class="lg:hidden bg-blue-800 text-white hidden mobile-menu-transition" id="mobile-menu">
+        <div class="container mx-auto px-4 py-2">
+            <nav>
+                <ul class="space-y-1">
+                    <li>
+                        <a href="user_dashboard.php" class="nav-item nav-active block px-4 py-2 rounded">
+                            <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="daily_calling.php" class="nav-item block px-4 py-2 rounded">
+                            <i class="fas fa-phone mr-2"></i> Daily Calling
+                        </a>
+                    </li>
+                    <li>
+                        <a href="special_followup.php" class="nav-item block px-4 py-2 rounded">
+                            <i class="fas fa-user-clock mr-2"></i> Special Follow-ups
+                        </a>
+                    </li>
+                    <li>
+                        <a href="user_campaign_calling.php" class="nav-item block px-4 py-2 rounded">
+                            <i class="fas fa-bullhorn mr-2"></i> Campaign Calling
+                        </a>
+                    </li>
+                    <li>
+                        <a href="create_new_id.php" class="nav-item block px-4 py-2 rounded">
+                            <i class="fas fa-user-plus mr-2"></i> Create New ID
+                        </a>
+                    </li>
+                    <li>
+                        <a href="client_search.php" class="nav-item block px-4 py-2 rounded">
+                            <i class="fas fa-search mr-2"></i> Client Search
+                        </a>
+                    </li>
+                    <li>
+                        <a href="user_followup_history.php" class="nav-item block px-4 py-2 rounded">
+                            <i class="fas fa-history mr-2"></i> My Follow-up History
+                        </a>
+                    </li>
+                    <li>
+                        <a href="user_profile.php" class="nav-item block px-4 py-2 rounded">
+                            <i class="fas fa-user-circle mr-2"></i> My Profile
+                        </a>
+                    </li>
+                    <li>
+                        <a href="user_logout.php" class="nav-item block px-4 py-2 rounded">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main Content Container with Side Navigation -->
+    <div class="container mx-auto px-4 py-6">
+        <div class="flex flex-col lg:flex-row">
+            <!-- Side Navigation - Hidden on Mobile -->
+            <div class="hidden lg:block w-64 bg-blue-800 text-white rounded-lg shadow-lg">
+                <nav class="py-4">
+                    <ul class="space-y-1">
+                        <li>
+                            <a href="user_dashboard.php" class="nav-item nav-active flex items-center px-4 py-3 rounded">
+                                <i class="fas fa-tachometer-alt w-6"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="daily_calling.php" class="nav-item flex items-center px-4 py-3 rounded">
+                                <i class="fas fa-phone w-6"></i>
+                                <span>Daily Calling</span>
+                                <span class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">24</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="special_followup.php" class="nav-item flex items-center px-4 py-3 rounded">
+                                <i class="fas fa-user-clock w-6"></i>
+                                <span>Special Follow-ups</span>
+                                <span class="ml-auto bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">7</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="user_campaign_calling.php" class="nav-item flex items-center px-4 py-3 rounded">
+                                <i class="fas fa-bullhorn w-6"></i>
+                                <span>Campaign Calling</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="create_new_id.php" class="nav-item flex items-center px-4 py-3 rounded">
+                                <i class="fas fa-user-plus w-6"></i>
+                                <span>Create New ID</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="client_search.php" class="nav-item flex items-center px-4 py-3 rounded">
+                                <i class="fas fa-search w-6"></i>
+                                <span>Client Search</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="user_followup_history.php" class="nav-item flex items-center px-4 py-3 rounded">
+                                <i class="fas fa-history w-6"></i>
+                                <span>My Follow-up History</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            
+            <!-- Main Content Area - Placeholder for Page Content -->
+            <div class="w-full lg:ml-6 lg:flex-1 mt-6 lg:mt-0 bg-white rounded-lg shadow-lg p-6">
+                <div class="border-b pb-3 mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
+                    <p class="text-gray-600">Welcome back, John. Here's your daily overview.</p>
+                </div>
+                
+                <!-- This is where the content of each page would be shown -->
+                <div class="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg">
+                    <p class="font-medium">This is a representation of the <code>user_header.php</code> file.</p>
+                    <p>In the actual PHP implementation, this is where the content of each page would be displayed.</p>
+                    <p>The active menu item ("Dashboard" in this example) is highlighted in the navigation.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simple Footer -->
+    <footer class="bg-white text-gray-600 py-4 mt-6 border-t">
+        <div class="container mx-auto px-4 text-center">
+            <p>Client Calling & Follow-up CRM &copy; 2025. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript for Mobile Menu Toggle and User Dropdown -->
+    <script>
+        // Mobile Menu Toggle
+        document.getElementById('mobile-menu-button').addEventListener('click', function() {
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenu.classList.toggle('hidden');
+        });
+        
+        // User Dropdown Toggle
+        document.getElementById('user-dropdown-button').addEventListener('click', function() {
+            const dropdown = document.getElementById('user-dropdown');
+            dropdown.classList.toggle('hidden');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const container = document.getElementById('user-dropdown-container');
+            const dropdown = document.getElementById('user-dropdown');
+            
+            if (!container.contains(event.target) && !dropdown.classList.contains('hidden')) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // In a real implementation, PHP would dynamically add the 'nav-active' class
+        // to the current page's menu item based on the current URL.
+        // This would be something like:
+        // 
+        // <?php
+        // function isActive($page) {
+        //     $currentPage = basename($_SERVER['PHP_SELF']);
+        //     return ($currentPage == $page) ? 'nav-active' : '';
+        // }
+        // ?>
+        //
+        // And then in the HTML:
+        // <a href="page.php" class="nav-item <?php echo isActive('page.php'); ?>">
+    </script>
+</body>
+</html>
