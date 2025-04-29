@@ -1,0 +1,531 @@
+<?php
+/**
+ * Export Helpers
+ * 
+ * Helper functions for exporting data to CSV and Excel formats
+ * Used by the CRM system for report generation and data exports
+ * 
+ * @package CRM System
+ */
+
+// Prevent direct access
+if (!defined('INCLUDED_FROM_INDEX')) {
+    header('HTTP/1.0 403 Forbidden');
+    exit('Direct access to this file is forbidden.');
+}
+
+/**
+ * Export data array to CSV file
+ * 
+ * @param array $data Array of associative arrays containing data to export
+ * @param string $filename Name for the downloaded file (without extension)
+ * @param array|null $headers Column headers (if null, uses keys from first row)
+ * @return void Outputs CSV file for download
+ */
+function exportToCSV($data, $filename, $headers = null) {
+    // Validate input
+    if (empty($data) || !is_array($data)) {
+        return false;
+    }
+    
+    // Clean filename to prevent security issues
+    $filename = preg_replace('/[^a-z0-9_\-]/i', '_', $filename);
+    
+    // Set headers to force download
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '.csv"');
+    
+    // Create output stream
+    $output = fopen('php://output', 'w');
+    
+    // Add UTF-8 BOM for Excel compatibility
+    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+    
+    // Write headers
+    if ($headers === null && !empty($data)) {
+        // Use keys from first row as headers
+        $headers = array_keys($data[0]);
+    }
+    
+    if (is_array($headers)) {
+        fputcsv($output, $headers);
+    }
+    
+    // Write data rows
+    foreach ($data as $row) {
+        fputcsv($output, $row);
+    }
+    
+    // Close output stream
+    fclose($output);
+    exit; // Stop further execution
+}
+
+/**
+ * Export data array to Excel file
+ * 
+ * @param array $data Array of associative arrays containing data to export
+ * @param string $filename Name for the downloaded file (without extension)
+ * @param array|null $headers Column headers (if null, uses keys from first row)
+ * @param string $sheetName Name of the worksheet
+ * @return void Outputs Excel file for download
+ */
+function exportToExcel($data, $filename, $headers = null, $sheetName = 'Sheet1') {
+    // Validate input
+    if (empty($data) || !is_array($data)) {
+        return false;
+    }
+    
+    // Clean filename to prevent security issues
+    $filename = preg_replace('/[^a-z0-9_\-]/i', '_', $filename);
+    
+    // Set headers to force download
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . $filename . '.xlsx"');
+    header('Cache-Control: max-age=0');
+    
+    // Build simple XML Excel file
+    $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets>
+<sheet name="' . htmlspecialchars($sheetName) . '" sheetId="1" r:id="rId1"/>
+</sheets>
+</workbook>';
+    
+    // Get headers if not provided
+    if ($headers === null && !empty($data)) {
+        $headers = array_keys($data[0]);
+    }
+    
+    // Start CSV data
+    $csvData = '';
+    
+    // Add headers to CSV
+    if (is_array($headers)) {
+        $headerLine = '';
+        foreach ($headers as $header) {
+            $headerLine .= '"' . str_replace('"', '""', $header) . '",';
+        }
+        $csvData .= rtrim($headerLine, ',') . "\n";
+    }
+    
+    // Add data rows to CSV
+    foreach ($data as $row) {
+        $line = '';
+        foreach ($row as $cell) {
+            $line .= '"' . str_replace('"', '""', $cell) . '",';
+        }
+        $csvData .= rtrim($line, ',') . "\n";
+    }
+    
+    // Output the CSV data
+    echo $csvData;
+    exit; // Stop further execution
+}
+
+/**
+ * Export data to specific format
+ * 
+ * @param array $data Array of associative arrays containing data to export
+ * @param string $format Format to export (csv, excel)
+ * @param string $filename Name for the downloaded file (without extension)
+ * @param array|null $headers Column headers (if null, uses keys from first row)
+ * @return void Outputs file for download
+ */
+function exportData($data, $format, $filename, $headers = null) {
+    switch (strtolower($format)) {
+        case 'csv':
+            exportToCSV($data, $filename, $headers);
+            break;
+        
+        case 'excel':
+        case 'xlsx':
+            exportToExcel($data, $filename, $headers);
+            break;
+        
+        default:
+            // Invalid format requested
+            header('HTTP/1.0 400 Bad Request');
+            echo 'Invalid export format requested.';
+            exit;
+    }
+}
+
+/**
+ * Generate export file name based on report type and date
+ * 
+ * @param string $reportType Type of report being exported
+ * @return string Generated filename
+ */
+function generateExportFilename($reportType) {
+    $reportType = preg_replace('/[^a-z0-9_\-]/i', '_', $reportType);
+    $date = date('Y-m-d');
+    return "{$reportType}_export_{$date}";
+}
+
+/**
+ * Validate export request parameters
+ * 
+ * @param array $params Parameters to validate
+ * @return array|false Returns validated parameters or false if invalid
+ */
+function validateExportParams($params) {
+    $required = ['format', 'report_type'];
+    
+    foreach ($required as $field) {
+        if (!isset($params[$field]) || empty($params[$field])) {
+            return false;
+        }
+    }
+    
+    // Validate format
+    $format = strtolower($params['format']);
+    if (!in_array($format, ['csv', 'excel', 'xlsx'])) {
+        return false;
+    }
+    
+    // Validate report type
+    $reportType = $params['report_type'];
+    $validReportTypes = [
+        'master_clients',
+        'followup',
+        'campaign',
+        'user_performance',
+        'non_playing',
+        'deposit_analysis'
+    ];
+    
+    if (!in_array($reportType, $validReportTypes)) {
+        return false;
+    }
+    
+    return [
+        'format' => $format,
+        'report_type' => $reportType,
+        'filename' => generateExportFilename($reportType)
+    ];
+}
+
+/**
+ * Format data for export based on report type
+ * 
+ * @param array $data Raw data from database
+ * @param string $reportType Type of report being exported
+ * @return array Formatted data ready for export
+ */
+function formatDataForExport($data, $reportType) {
+    switch ($reportType) {
+        case 'master_clients':
+            // Format specific to master clients list
+            $headers = [
+                'Client ID/Name', 
+                'Mobile Number', 
+                'Last Played Date', 
+                'Days Not Played', 
+                'Deposit Amount', 
+                'Deposit Tag',
+                'Created By', 
+                'Created At'
+            ];
+            
+            $formatted = [];
+            foreach ($data as $row) {
+                $formatted[] = [
+                    'client_id_name' => $row['client_id_name'],
+                    'mobile_number' => $row['mobile_number'],
+                    'last_played_date' => $row['last_played_date'] ?? 'Never',
+                    'days_not_played' => $row['days_not_played'] ?? 'N/A',
+                    'deposit_amount' => $row['deposit_amount'] ? '₹' . number_format($row['deposit_amount'], 2) : 'N/A',
+                    'deposit_tag' => $row['deposit_tag'] ?? 'N/A',
+                    'created_by' => $row['username'] ?? 'System',
+                    'created_at' => date('Y-m-d H:i', strtotime($row['created_at']))
+                ];
+            }
+            return ['data' => $formatted, 'headers' => $headers];
+            
+        case 'followup':
+            // Format specific to followup report
+            $headers = [
+                'Date', 
+                'Client ID/Name', 
+                'Mobile Number', 
+                'Status', 
+                'Remark', 
+                'User', 
+                'Time'
+            ];
+            
+            $formatted = [];
+            foreach ($data as $row) {
+                $formatted[] = [
+                    'date' => $row['date'],
+                    'client_id_name' => $row['client_id_name'],
+                    'mobile_number' => $row['mobile_number'],
+                    'status' => ucfirst(str_replace('_', ' ', $row['status'])),
+                    'remark' => $row['remark'] ?? '',
+                    'username' => $row['username'],
+                    'created_at' => date('H:i', strtotime($row['created_at']))
+                ];
+            }
+            return ['data' => $formatted, 'headers' => $headers];
+            
+        // Add other report types as needed
+        
+        default:
+            // Default formatting just returns the data as is
+            return ['data' => $data, 'headers' => null];
+    }
+}
+
+/**
+ * Log export activity
+ * 
+ * @param int $userId User ID performing the export
+ * @param string $reportType Type of report being exported
+ * @param string $format Format of export (csv, excel)
+ * @return bool Success status
+ */
+function logExportActivity($userId, $reportType, $format) {
+    global $pdo;
+    
+    try {
+        $query = "INSERT INTO activity_logs (user_id, activity_type, details) 
+                  VALUES (:user_id, 'export', :details)";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([
+            ':user_id' => $userId,
+            ':details' => "Exported $reportType report in $format format"
+        ]);
+        return true;
+    } catch (PDOException $e) {
+        // Log error silently, don't disrupt export
+        error_log("Export log error: " . $e->getMessage());
+        return false;
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export Helpers Documentation</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <header class="mb-10">
+            <h1 class="text-3xl font-bold text-blue-600 mb-2">Export Helpers Documentation</h1>
+            <p class="text-gray-600">Utility functions for exporting data to CSV and Excel formats</p>
+        </header>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-700">Overview</h2>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <p class="mb-4">This file provides helper functions for exporting data from the CRM system to CSV and Excel formats. These functions are used throughout the system for report generation and data exports.</p>
+                <p class="mb-4">The export functionality supports:</p>
+                <ul class="list-disc ml-6 mb-4">
+                    <li class="mb-2">CSV exports with proper UTF-8 encoding</li>
+                    <li class="mb-2">Excel (.xlsx) exports compatible with Microsoft Excel</li>
+                    <li class="mb-2">Custom column headers</li>
+                    <li class="mb-2">Proper filename generation</li>
+                    <li class="mb-2">Activity logging for audit trails</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-700">Available Functions</h2>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="mb-6">
+                    <h3 class="text-xl font-medium text-blue-600 mb-2">exportToCSV()</h3>
+                    <p class="mb-2 text-gray-700">Exports data array to CSV file format</p>
+                    <div class="bg-gray-100 p-3 rounded-md">
+                        <code class="text-sm">
+                            exportToCSV($data, $filename, $headers = null)
+                        </code>
+                    </div>
+                    <p class="mt-2 text-gray-600">Outputs a downloadable CSV file with the provided data</p>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-xl font-medium text-blue-600 mb-2">exportToExcel()</h3>
+                    <p class="mb-2 text-gray-700">Exports data array to Excel file format</p>
+                    <div class="bg-gray-100 p-3 rounded-md">
+                        <code class="text-sm">
+                            exportToExcel($data, $filename, $headers = null, $sheetName = 'Sheet1')
+                        </code>
+                    </div>
+                    <p class="mt-2 text-gray-600">Outputs a downloadable Excel file with the provided data</p>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-xl font-medium text-blue-600 mb-2">exportData()</h3>
+                    <p class="mb-2 text-gray-700">Exports data to the specified format</p>
+                    <div class="bg-gray-100 p-3 rounded-md">
+                        <code class="text-sm">
+                            exportData($data, $format, $filename, $headers = null)
+                        </code>
+                    </div>
+                    <p class="mt-2 text-gray-600">Wrapper function that handles multiple export formats</p>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-xl font-medium text-blue-600 mb-2">generateExportFilename()</h3>
+                    <p class="mb-2 text-gray-700">Generates a filename based on report type and date</p>
+                    <div class="bg-gray-100 p-3 rounded-md">
+                        <code class="text-sm">
+                            generateExportFilename($reportType)
+                        </code>
+                    </div>
+                    <p class="mt-2 text-gray-600">Creates standardized filenames for exports</p>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-xl font-medium text-blue-600 mb-2">validateExportParams()</h3>
+                    <p class="mb-2 text-gray-700">Validates export request parameters</p>
+                    <div class="bg-gray-100 p-3 rounded-md">
+                        <code class="text-sm">
+                            validateExportParams($params)
+                        </code>
+                    </div>
+                    <p class="mt-2 text-gray-600">Ensures all required export parameters are valid</p>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-xl font-medium text-blue-600 mb-2">formatDataForExport()</h3>
+                    <p class="mb-2 text-gray-700">Formats data for export based on report type</p>
+                    <div class="bg-gray-100 p-3 rounded-md">
+                        <code class="text-sm">
+                            formatDataForExport($data, $reportType)
+                        </code>
+                    </div>
+                    <p class="mt-2 text-gray-600">Prepares data specifically for each report type</p>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-xl font-medium text-blue-600 mb-2">logExportActivity()</h3>
+                    <p class="mb-2 text-gray-700">Logs export activity for audit purposes</p>
+                    <div class="bg-gray-100 p-3 rounded-md">
+                        <code class="text-sm">
+                            logExportActivity($userId, $reportType, $format)
+                        </code>
+                    </div>
+                    <p class="mt-2 text-gray-600">Records who exported what and when</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-700">Usage Examples</h2>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="mb-6">
+                    <h3 class="text-xl font-medium text-blue-600 mb-2">Basic CSV Export</h3>
+                    <div class="bg-gray-100 p-3 rounded-md">
+                        <pre class="text-sm">
+// Get data from database
+$query = "SELECT * FROM master_clients";
+$stmt = $pdo->prepare($query);
+$stmt->execute();
+$clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Export to CSV
+exportToCSV($clients, 'client_list');
+                        </pre>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-xl font-medium text-blue-600 mb-2">Excel Export with Custom Headers</h3>
+                    <div class="bg-gray-100 p-3 rounded-md">
+                        <pre class="text-sm">
+// Define custom headers
+$headers = ['ID', 'Client Name', 'Phone Number', 'Last Active', 'Status'];
+
+// Prepare data
+$data = [
+    ['id' => 1, 'name' => 'John Doe', 'phone' => '1234567890', 'last_active' => '2023-01-15', 'status' => 'Active'],
+    ['id' => 2, 'name' => 'Jane Smith', 'phone' => '9876543210', 'last_active' => '2023-01-10', 'status' => 'Inactive']
+];
+
+// Format data for our headers
+$formatted = [];
+foreach ($data as $row) {
+    $formatted[] = [
+        $row['id'],
+        $row['name'],
+        $row['phone'],
+        $row['last_active'],
+        $row['status']
+    ];
+}
+
+// Export to Excel
+exportToExcel($formatted, 'client_status_report', $headers);
+                        </pre>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-xl font-medium text-blue-600 mb-2">Using the Generic Export Function</h3>
+                    <div class="bg-gray-100 p-3 rounded-md">
+                        <pre class="text-sm">
+// Get data from database
+$query = "SELECT * FROM followups WHERE date BETWEEN :start AND :end";
+$stmt = $pdo->prepare($query);
+$stmt->execute([
+    ':start' => '2023-01-01',
+    ':end' => '2023-01-31'
+]);
+$followups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Format data for export
+$formattedData = formatDataForExport($followups, 'followup');
+
+// Export using the format requested by user
+$format = $_GET['format'] ?? 'csv'; // Default to CSV
+exportData(
+    $formattedData['data'], 
+    $format, 
+    'followup_report_jan2023', 
+    $formattedData['headers']
+);
+
+// Log the export activity
+logExportActivity($_SESSION['user_id'], 'followup', $format);
+                        </pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-700">Important Notes</h2>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <ul class="list-disc ml-6">
+                    <li class="mb-3">All export functions will terminate script execution after sending the file download headers.</li>
+                    <li class="mb-3">CSV exports include UTF-8 BOM (Byte Order Mark) for Excel compatibility.</li>
+                    <li class="mb-3">Excel exports use XML format compatible with modern Excel versions.</li>
+                    <li class="mb-3">The export functions should be called after all data processing is complete.</li>
+                    <li class="mb-3">For large data sets, consider implementing pagination or background processing.</li>
+                    <li class="mb-3">All user input should be validated before being passed to these functions.</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="text-2xl font-semibold mb-4 text-blue-700">Security Considerations</h2>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <ul class="list-disc ml-6">
+                    <li class="mb-3">File names are automatically sanitized to prevent security issues.</li>
+                    <li class="mb-3">Direct access to this file is prevented by security checks.</li>
+                    <li class="mb-3">All database interactions use prepared statements to prevent SQL injection.</li>
+                    <li class="mb-3">Export permissions should be checked before calling these functions.</li>
+                    <li class="mb-3">Activity logging provides an audit trail of exports.</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
