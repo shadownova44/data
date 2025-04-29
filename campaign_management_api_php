@@ -1,0 +1,983 @@
+<?php
+/**
+ * Campaign Management API
+ * 
+ * This API handles all campaign-related operations including:
+ * - Creating new campaigns
+ * - Updating campaign details
+ * - Deleting campaigns
+ * - Assigning campaign leads to users
+ * - Getting campaign statistics
+ * - Processing campaign CSV uploads
+ */
+
+// Required files
+require_once 'config.php';
+require_once 'functions.php';
+
+// Set headers for JSON response
+header('Content-Type: application/json');
+
+// Start session for authentication check
+session_start();
+
+// Check if user is logged in and is an admin
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+    http_response_code(401);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Unauthorized access. Admin privileges required.'
+    ]);
+    exit;
+}
+
+// Determine request method
+$method = $_SERVER['REQUEST_METHOD'];
+
+// Get action from request
+$action = isset($_GET['action']) ? $_GET['action'] : '';
+
+// Handle different request methods and actions
+switch ($method) {
+    case 'GET':
+        handleGetRequest($action, $pdo);
+        break;
+    case 'POST':
+        handlePostRequest($action, $pdo);
+        break;
+    case 'PUT':
+        handlePutRequest($action, $pdo);
+        break;
+    case 'DELETE':
+        handleDeleteRequest($action, $pdo);
+        break;
+    default:
+        http_response_code(405);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Method not allowed'
+        ]);
+        break;
+}
+
+/**
+ * Handle GET requests for fetching campaign data
+ */
+function handleGetRequest($action, $pdo) {
+    switch ($action) {
+        case 'get_all_campaigns':
+            getAllCampaigns($pdo);
+            break;
+        case 'get_campaign':
+            if (!isset($_GET['id'])) {
+                http_response_code(400);
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'Campaign ID is required'
+                ]);
+                exit;
+            }
+            getCampaignById($pdo, $_GET['id']);
+            break;
+        case 'get_campaign_stats':
+            if (!isset($_GET['id'])) {
+                http_response_code(400);
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'Campaign ID is required'
+                ]);
+                exit;
+            }
+            getCampaignStats($pdo, $_GET['id']);
+            break;
+        case 'get_campaign_clients':
+            if (!isset($_GET['id'])) {
+                http_response_code(400);
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'Campaign ID is required'
+                ]);
+                exit;
+            }
+            getCampaignClients($pdo, $_GET['id']);
+            break;
+        case 'get_available_users':
+            getAvailableUsers($pdo);
+            break;
+        default:
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Invalid action'
+            ]);
+            break;
+    }
+}
+
+/**
+ * Handle POST requests for creating and updating campaigns
+ */
+function handlePostRequest($action, $pdo) {
+    // Get POST data
+    $postData = json_decode(file_get_contents('php://input'), true);
+    if (!$postData && !empty($_POST)) {
+        $postData = $_POST;
+    }
+
+    switch ($action) {
+        case 'create_campaign':
+            createCampaign($pdo, $postData);
+            break;
+        case 'assign_leads':
+            assignLeadsToUsers($pdo, $postData);
+            break;
+        case 'upload_csv':
+            processCsvUpload($pdo);
+            break;
+        case 'update_campaign_status':
+            updateCampaignStatus($pdo, $postData);
+            break;
+        default:
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Invalid action'
+            ]);
+            break;
+    }
+}
+
+/**
+ * Handle PUT requests for updating campaign data
+ */
+function handlePutRequest($action, $pdo) {
+    // Get PUT data
+    $putData = json_decode(file_get_contents('php://input'), true);
+
+    switch ($action) {
+        case 'update_campaign':
+            if (!isset($putData['id'])) {
+                http_response_code(400);
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'Campaign ID is required'
+                ]);
+                exit;
+            }
+            updateCampaign($pdo, $putData);
+            break;
+        default:
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Invalid action'
+            ]);
+            break;
+    }
+}
+
+/**
+ * Handle DELETE requests for deleting campaigns
+ */
+function handleDeleteRequest($action, $pdo) {
+    // Get DELETE data
+    $deleteData = json_decode(file_get_contents('php://input'), true);
+
+    switch ($action) {
+        case 'delete_campaign':
+            if (!isset($deleteData['id'])) {
+                http_response_code(400);
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'Campaign ID is required'
+                ]);
+                exit;
+            }
+            deleteCampaign($pdo, $deleteData['id']);
+            break;
+        default:
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Invalid action'
+            ]);
+            break;
+    }
+}
+
+/**
+ * Get all campaigns
+ */
+function getAllCampaigns($pdo) {
+    try {
+        $query = "SELECT c.*, 
+                 (SELECT COUNT(*) FROM campaign_clients WHERE campaign_id = c.id) as total_leads,
+                 (SELECT COUNT(*) FROM campaign_clients WHERE campaign_id = c.id AND status != 'pending') as processed_leads
+                 FROM campaigns c
+                 ORDER BY c.created_at DESC";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute();
+        $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => $campaigns
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Get campaign by ID
+ */
+function getCampaignById($pdo, $campaignId) {
+    try {
+        $query = "SELECT c.*, 
+                 (SELECT COUNT(*) FROM campaign_clients WHERE campaign_id = c.id) as total_leads,
+                 (SELECT COUNT(*) FROM campaign_clients WHERE campaign_id = c.id AND status != 'pending') as processed_leads
+                 FROM campaigns c
+                 WHERE c.id = :id";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':id', $campaignId, PDO::PARAM_INT);
+        $stmt->execute();
+        $campaign = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$campaign) {
+            http_response_code(404);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Campaign not found'
+            ]);
+            exit;
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => $campaign
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Get campaign statistics
+ */
+function getCampaignStats($pdo, $campaignId) {
+    try {
+        // Verify campaign exists
+        $query = "SELECT id FROM campaigns WHERE id = :id";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':id', $campaignId, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        if (!$stmt->fetch()) {
+            http_response_code(404);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Campaign not found'
+            ]);
+            exit;
+        }
+
+        // Get campaign statistics
+        $query = "SELECT 
+                 COUNT(*) as total_leads,
+                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_leads,
+                 SUM(CASE WHEN status = 'called' THEN 1 ELSE 0 END) as called_leads,
+                 SUM(CASE WHEN status = 'id_created' THEN 1 ELSE 0 END) as id_created_leads,
+                 SUM(CASE WHEN status = 'other' THEN 1 ELSE 0 END) as other_leads
+                 FROM campaign_clients
+                 WHERE campaign_id = :id";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':id', $campaignId, PDO::PARAM_INT);
+        $stmt->execute();
+        $stats = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Get user-wise statistics
+        $query = "SELECT u.username, 
+                 COUNT(*) as assigned_leads,
+                 SUM(CASE WHEN cc.status = 'called' THEN 1 ELSE 0 END) as called_leads,
+                 SUM(CASE WHEN cc.status = 'id_created' THEN 1 ELSE 0 END) as id_created_leads
+                 FROM campaign_clients cc
+                 JOIN users u ON cc.assigned_user = u.id
+                 WHERE cc.campaign_id = :id
+                 GROUP BY cc.assigned_user";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':id', $campaignId, PDO::PARAM_INT);
+        $stmt->execute();
+        $userStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'campaign_stats' => $stats,
+                'user_stats' => $userStats
+            ]
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Get campaign clients
+ */
+function getCampaignClients($pdo, $campaignId) {
+    try {
+        // Verify campaign exists
+        $query = "SELECT id FROM campaigns WHERE id = :id";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':id', $campaignId, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        if (!$stmt->fetch()) {
+            http_response_code(404);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Campaign not found'
+            ]);
+            exit;
+        }
+
+        // Get filter parameters
+        $status = isset($_GET['status']) ? $_GET['status'] : null;
+        $userId = isset($_GET['user_id']) ? $_GET['user_id'] : null;
+        $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 100;
+        $offset = isset($_GET['offset']) ? intval($_GET['offset']) : 0;
+
+        // Base query
+        $query = "SELECT cc.*, u.username as assigned_username
+                 FROM campaign_clients cc
+                 LEFT JOIN users u ON cc.assigned_user = u.id
+                 WHERE cc.campaign_id = :campaign_id";
+        
+        $params = [':campaign_id' => $campaignId];
+        
+        // Add filters
+        if ($status) {
+            $query .= " AND cc.status = :status";
+            $params[':status'] = $status;
+        }
+        
+        if ($userId) {
+            $query .= " AND cc.assigned_user = :user_id";
+            $params[':user_id'] = $userId;
+        }
+        
+        // Add order and limit
+        $query .= " ORDER BY cc.id DESC LIMIT :limit OFFSET :offset";
+        
+        $stmt = $pdo->prepare($query);
+        
+        // Bind parameters
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        
+        $stmt->execute();
+        $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Get total count for pagination
+        $countQuery = "SELECT COUNT(*) as total FROM campaign_clients WHERE campaign_id = :campaign_id";
+        $countParams = [':campaign_id' => $campaignId];
+        
+        if ($status) {
+            $countQuery .= " AND status = :status";
+            $countParams[':status'] = $status;
+        }
+        
+        if ($userId) {
+            $countQuery .= " AND assigned_user = :user_id";
+            $countParams[':user_id'] = $userId;
+        }
+        
+        $countStmt = $pdo->prepare($countQuery);
+        
+        foreach ($countParams as $key => $value) {
+            $countStmt->bindValue($key, $value);
+        }
+        
+        $countStmt->execute();
+        $totalCount = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'clients' => $clients,
+                'total' => $totalCount,
+                'limit' => $limit,
+                'offset' => $offset
+            ]
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Get available users for assignment
+ */
+function getAvailableUsers($pdo) {
+    try {
+        $query = "SELECT id, username FROM users WHERE role = 'user' AND status = 'active' ORDER BY username";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute();
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => $users
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Create a new campaign
+ */
+function createCampaign($pdo, $data) {
+    // Validate required fields
+    if (!isset($data['campaign_name']) || empty($data['campaign_name'])) {
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Campaign name is required'
+        ]);
+        exit;
+    }
+
+    try {
+        $query = "INSERT INTO campaigns (campaign_name, description, created_by) 
+                  VALUES (:campaign_name, :description, :created_by)";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':campaign_name', $data['campaign_name']);
+        $stmt->bindParam(':description', $data['description'] ?? '');
+        $stmt->bindParam(':created_by', $_SESSION['user_id']);
+        $stmt->execute();
+
+        $campaignId = $pdo->lastInsertId();
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Campaign created successfully',
+            'data' => [
+                'id' => $campaignId,
+                'campaign_name' => $data['campaign_name']
+            ]
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Update an existing campaign
+ */
+function updateCampaign($pdo, $data) {
+    // Validate required fields
+    if (!isset($data['id']) || empty($data['id'])) {
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Campaign ID is required'
+        ]);
+        exit;
+    }
+
+    if (!isset($data['campaign_name']) || empty($data['campaign_name'])) {
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Campaign name is required'
+        ]);
+        exit;
+    }
+
+    try {
+        // Check if campaign exists
+        $checkQuery = "SELECT id FROM campaigns WHERE id = :id";
+        $checkStmt = $pdo->prepare($checkQuery);
+        $checkStmt->bindParam(':id', $data['id'], PDO::PARAM_INT);
+        $checkStmt->execute();
+        
+        if (!$checkStmt->fetch()) {
+            http_response_code(404);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Campaign not found'
+            ]);
+            exit;
+        }
+
+        // Update campaign
+        $query = "UPDATE campaigns 
+                  SET campaign_name = :campaign_name, 
+                      description = :description
+                  WHERE id = :id";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':campaign_name', $data['campaign_name']);
+        $stmt->bindParam(':description', $data['description'] ?? '');
+        $stmt->bindParam(':id', $data['id'], PDO::PARAM_INT);
+        $stmt->execute();
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Campaign updated successfully',
+            'data' => [
+                'id' => $data['id'],
+                'campaign_name' => $data['campaign_name']
+            ]
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Delete a campaign
+ */
+function deleteCampaign($pdo, $campaignId) {
+    try {
+        // Check if campaign exists
+        $checkQuery = "SELECT id FROM campaigns WHERE id = :id";
+        $checkStmt = $pdo->prepare($checkQuery);
+        $checkStmt->bindParam(':id', $campaignId, PDO::PARAM_INT);
+        $checkStmt->execute();
+        
+        if (!$checkStmt->fetch()) {
+            http_response_code(404);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Campaign not found'
+            ]);
+            exit;
+        }
+
+        // Start transaction
+        $pdo->beginTransaction();
+
+        // Delete campaign clients first (foreign key constraint)
+        $deleteClientsQuery = "DELETE FROM campaign_clients WHERE campaign_id = :campaign_id";
+        $deleteClientsStmt = $pdo->prepare($deleteClientsQuery);
+        $deleteClientsStmt->bindParam(':campaign_id', $campaignId, PDO::PARAM_INT);
+        $deleteClientsStmt->execute();
+
+        // Delete campaign
+        $deleteCampaignQuery = "DELETE FROM campaigns WHERE id = :id";
+        $deleteCampaignStmt = $pdo->prepare($deleteCampaignQuery);
+        $deleteCampaignStmt->bindParam(':id', $campaignId, PDO::PARAM_INT);
+        $deleteCampaignStmt->execute();
+
+        // Commit transaction
+        $pdo->commit();
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Campaign deleted successfully'
+        ]);
+    } catch (PDOException $e) {
+        // Rollback transaction on error
+        $pdo->rollBack();
+        
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Assign leads to users
+ */
+function assignLeadsToUsers($pdo, $data) {
+    // Validate required fields
+    if (!isset($data['campaign_id']) || empty($data['campaign_id'])) {
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Campaign ID is required'
+        ]);
+        exit;
+    }
+
+    if (!isset($data['assignments']) || !is_array($data['assignments']) || empty($data['assignments'])) {
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Assignments are required'
+        ]);
+        exit;
+    }
+
+    try {
+        // Check if campaign exists
+        $checkQuery = "SELECT id FROM campaigns WHERE id = :id";
+        $checkStmt = $pdo->prepare($checkQuery);
+        $checkStmt->bindParam(':id', $data['campaign_id'], PDO::PARAM_INT);
+        $checkStmt->execute();
+        
+        if (!$checkStmt->fetch()) {
+            http_response_code(404);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Campaign not found'
+            ]);
+            exit;
+        }
+
+        // Start transaction
+        $pdo->beginTransaction();
+
+        $successCount = 0;
+        $errorCount = 0;
+
+        foreach ($data['assignments'] as $assignment) {
+            if (!isset($assignment['client_ids']) || !isset($assignment['user_id'])) {
+                $errorCount++;
+                continue;
+            }
+
+            $clientIds = $assignment['client_ids'];
+            $userId = $assignment['user_id'];
+
+            // Validate user exists and is active
+            $userQuery = "SELECT id FROM users WHERE id = :id AND status = 'active'";
+            $userStmt = $pdo->prepare($userQuery);
+            $userStmt->bindParam(':id', $userId, PDO::PARAM_INT);
+            $userStmt->execute();
+            
+            if (!$userStmt->fetch()) {
+                $errorCount += count($clientIds);
+                continue;
+            }
+
+            // Update assignments
+            $updateQuery = "UPDATE campaign_clients 
+                          SET assigned_user = :user_id 
+                          WHERE id = :client_id AND campaign_id = :campaign_id";
+            $updateStmt = $pdo->prepare($updateQuery);
+            
+            foreach ($clientIds as $clientId) {
+                $updateStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+                $updateStmt->bindParam(':client_id', $clientId, PDO::PARAM_INT);
+                $updateStmt->bindParam(':campaign_id', $data['campaign_id'], PDO::PARAM_INT);
+                
+                if ($updateStmt->execute() && $updateStmt->rowCount() > 0) {
+                    $successCount++;
+                } else {
+                    $errorCount++;
+                }
+            }
+        }
+
+        // Commit transaction
+        $pdo->commit();
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => "Assigned $successCount leads successfully" . ($errorCount > 0 ? ", $errorCount leads failed" : "")
+        ]);
+    } catch (PDOException $e) {
+        // Rollback transaction on error
+        $pdo->rollBack();
+        
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Process CSV upload
+ */
+function processCsvUpload($pdo) {
+    // Check if file is uploaded
+    if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'CSV file upload failed'
+        ]);
+        exit;
+    }
+
+    // Check campaign ID
+    if (!isset($_POST['campaign_id']) || empty($_POST['campaign_id'])) {
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Campaign ID is required'
+        ]);
+        exit;
+    }
+
+    $campaignId = $_POST['campaign_id'];
+
+    // Check if campaign exists
+    try {
+        $checkQuery = "SELECT id FROM campaigns WHERE id = :id";
+        $checkStmt = $pdo->prepare($checkQuery);
+        $checkStmt->bindParam(':id', $campaignId, PDO::PARAM_INT);
+        $checkStmt->execute();
+        
+        if (!$checkStmt->fetch()) {
+            http_response_code(404);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Campaign not found'
+            ]);
+            exit;
+        }
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+        exit;
+    }
+
+    // Process CSV file
+    $file = $_FILES['csv_file']['tmp_name'];
+    $filename = $_FILES['csv_file']['name'];
+    
+    // Store file path in database
+    $uploadDir = 'uploads/campaigns/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+    
+    $targetFile = $uploadDir . time() . '_' . $filename;
+    
+    if (!move_uploaded_file($file, $targetFile)) {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Failed to save uploaded file'
+        ]);
+        exit;
+    }
+
+    // Update campaign with file path
+    try {
+        $updateQuery = "UPDATE campaigns SET file_uploaded = :file_path WHERE id = :id";
+        $updateStmt = $pdo->prepare($updateQuery);
+        $updateStmt->bindParam(':file_path', $targetFile);
+        $updateStmt->bindParam(':id', $campaignId, PDO::PARAM_INT);
+        $updateStmt->execute();
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+        exit;
+    }
+
+    // Process CSV and insert leads
+    $handle = fopen($file, 'r');
+    if (!$handle) {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Failed to open CSV file'
+        ]);
+        exit;
+    }
+
+    try {
+        // Start transaction
+        $pdo->beginTransaction();
+
+        // Read header row
+        $header = fgetcsv($handle);
+        
+        // Expected columns: client_id_name, mobile_number, [additional_info]
+        if (count($header) < 2 || 
+            !in_array('client_id_name', $header) || 
+            !in_array('mobile_number', $header)) {
+            
+            fclose($handle);
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Invalid CSV format. Required columns: client_id_name, mobile_number'
+            ]);
+            exit;
+        }
+        
+        // Find column indexes
+        $idNameIndex = array_search('client_id_name', $header);
+        $mobileIndex = array_search('mobile_number', $header);
+        
+        // Prepare insert statement
+        $insertQuery = "INSERT INTO campaign_clients 
+                       (campaign_id, client_id_name, mobile_number, status) 
+                       VALUES (:campaign_id, :client_id_name, :mobile_number, 'pending')";
+        $insertStmt = $pdo->prepare($insertQuery);
+        
+        $rowCount = 0;
+        $errorCount = 0;
+        
+        // Process data rows
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) <= max($idNameIndex, $mobileIndex)) {
+                $errorCount++;
+                continue; // Skip invalid rows
+            }
+            
+            $clientIdName = trim($row[$idNameIndex]);
+            $mobileNumber = trim($row[$mobileIndex]);
+            
+            // Skip empty rows
+            if (empty($clientIdName) || empty($mobileNumber)) {
+                $errorCount++;
+                continue;
+            }
+            
+            // Insert into database
+            $insertStmt->bindParam(':campaign_id', $campaignId);
+            $insertStmt->bindParam(':client_id_name', $clientIdName);
+            $insertStmt->bindParam(':mobile_number', $mobileNumber);
+            
+            if ($insertStmt->execute()) {
+                $rowCount++;
+            } else {
+                $errorCount++;
+            }
+        }
+        
+        fclose($handle);
+        
+        // Commit transaction
+        $pdo->commit();
+        
+        echo json_encode([
+            'status' => 'success',
+            'message' => "Processed $rowCount leads successfully" . ($errorCount > 0 ? ", $errorCount leads failed" : ""),
+            'data' => [
+                'rows_processed' => $rowCount,
+                'errors' => $errorCount
+            ]
+        ]);
+    } catch (PDOException $e) {
+        // Rollback transaction on error
+        $pdo->rollBack();
+        
+        fclose($handle);
+        
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Update campaign status
+ */
+function updateCampaignStatus($pdo, $data) {
+    // Validate required fields
+    if (!isset($data['campaign_id']) || empty($data['campaign_id'])) {
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Campaign ID is required'
+        ]);
+        exit;
+    }
+
+    if (!isset($data['status']) || empty($data['status'])) {
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Status is required'
+        ]);
+        exit;
+    }
+
+    // Validate status value
+    $validStatuses = ['active', 'paused', 'completed', 'archived'];
+    if (!in_array($data['status'], $validStatuses)) {
+        http_response_code(400);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Invalid status. Valid values: ' . implode(', ', $validStatuses)
+        ]);
+        exit;
+    }
+
+    try {
+        // Check if campaign exists
+        $checkQuery = "SELECT id FROM campaigns WHERE id = :id";
+        $checkStmt = $pdo->prepare($checkQuery);
+        $checkStmt->bindParam(':id', $data['campaign_id'], PDO::PARAM_INT);
+        $checkStmt->execute();
+        
+        if (!$checkStmt->fetch()) {
+            http_response_code(404);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Campaign not found'
+            ]);
+            exit;
+        }
+
+        // Update campaign status
+        $updateQuery = "UPDATE campaigns SET status = :status WHERE id = :id";
+        $updateStmt = $pdo->prepare($updateQuery);
+        $updateStmt->bindParam(':status', $data['status']);
+        $updateStmt->bindParam(':id', $data['campaign_id'], PDO::PARAM_INT);
+        $updateStmt->execute();
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Campaign status updated successfully'
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    }
+}
+?>
