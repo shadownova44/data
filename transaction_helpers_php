@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Transaction Helpers</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.24.1/themes/prism-okaidia.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .code-block {
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .function-block {
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 px-6 py-8">
+    <div class="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Database Transaction Helpers</h1>
+        <p class="text-gray-600 mb-6 pb-4 border-b border-gray-200">
+            Utility functions for handling database transactions in complex operations for the CRM system
+        </p>
+        
+        <div class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Overview</h2>
+            <p class="text-gray-600 mb-4">
+                This helper file provides functions to manage database transactions for operations that require multiple database changes to be processed as a single unit. It ensures data integrity by committing changes only when all operations succeed, and rolling back when any operation fails.
+            </p>
+            <div class="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 mb-6">
+                <h3 class="text-blue-800 font-medium mb-2">Key Benefits:</h3>
+                <ul class="list-disc pl-5 text-blue-700">
+                    <li>Ensures data integrity across multiple database operations</li>
+                    <li>Prevents partial updates when operations fail</li>
+                    <li>Simplifies error handling in complex database operations</li>
+                    <li>Improves code reliability and maintainability</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="function-block">
+            <h2 class="text-xl font-semibold text-gray-700 mb-3">File Structure</h2>
+            <div class="code-block bg-gray-800 text-white p-4 rounded-md mb-6">
+                <pre class="text-sm"><code>&lt;?php
+/**
+ * Transaction Helpers for CRM System
+ * 
+ * Provides utility functions for managing database transactions
+ * in complex operations requiring multiple related changes.
+ * 
+ * @package CRM System
+ * @author CRM Development Team
+ */
+
+// Prevent direct access
+if (!defined('AUTHORIZED')) {
+    http_response_code(403);
+    exit('No direct script access allowed');
+}
+
+// Include required files
+require_once 'config.php';
+require_once 'error_handler.php';
+
+// Main transaction helper functions
+</code></pre>
+            </div>
+        </div>
+
+        <div class="function-block">
+            <h2 class="text-xl font-semibold text-gray-700 mb-3">Transaction Management Functions</h2>
+            
+            <h3 class="text-lg font-medium text-gray-700 mb-2">Begin Transaction</h3>
+            <div class="code-block bg-gray-800 text-white p-4 rounded-md mb-6">
+                <pre class="text-sm"><code>/**
+ * Begin a database transaction
+ * 
+ * @param PDO $pdo PDO database connection
+ * @return bool True on success, false on failure
+ */
+function beginTransaction($pdo) {
+    try {
+        // Check if already in a transaction
+        if ($pdo->inTransaction()) {
+            logError('Transaction already in progress');
+            return false;
+        }
+        
+        return $pdo->beginTransaction();
+    } catch (PDOException $e) {
+        logError('Failed to begin transaction: ' . $e->getMessage());
+        return false;
+    }
+}</code></pre>
+            </div>
+            
+            <h3 class="text-lg font-medium text-gray-700 mb-2">Commit Transaction</h3>
+            <div class="code-block bg-gray-800 text-white p-4 rounded-md mb-6">
+                <pre class="text-sm"><code>/**
+ * Commit a database transaction
+ * 
+ * @param PDO $pdo PDO database connection
+ * @return bool True on success, false on failure
+ */
+function commitTransaction($pdo) {
+    try {
+        // Check if transaction is active
+        if (!$pdo->inTransaction()) {
+            logError('No active transaction to commit');
+            return false;
+        }
+        
+        return $pdo->commit();
+    } catch (PDOException $e) {
+        logError('Failed to commit transaction: ' . $e->getMessage());
+        return false;
+    }
+}</code></pre>
+            </div>
+            
+            <h3 class="text-lg font-medium text-gray-700 mb-2">Rollback Transaction</h3>
+            <div class="code-block bg-gray-800 text-white p-4 rounded-md mb-6">
+                <pre class="text-sm"><code>/**
+ * Roll back a database transaction
+ * 
+ * @param PDO $pdo PDO database connection
+ * @return bool True on success, false on failure
+ */
+function rollbackTransaction($pdo) {
+    try {
+        // Check if transaction is active
+        if (!$pdo->inTransaction()) {
+            logError('No active transaction to roll back');
+            return false;
+        }
+        
+        return $pdo->rollBack();
+    } catch (PDOException $e) {
+        logError('Failed to roll back transaction: ' . $e->getMessage());
+        return false;
+    }
+}</code></pre>
+            </div>
+        </div>
+        
+        <div class="function-block">
+            <h2 class="text-xl font-semibold text-gray-700 mb-3">Higher Level Transaction Functions</h2>
+            
+            <h3 class="text-lg font-medium text-gray-700 mb-2">Execute Transaction</h3>
+            <div class="code-block bg-gray-800 text-white p-4 rounded-md mb-6">
+                <pre class="text-sm"><code>/**
+ * Execute multiple queries as a single transaction
+ * 
+ * @param PDO $pdo PDO database connection
+ * @param array $queries Array of queries to execute
+ * @param array $params Array of parameters for each query
+ * @return bool True on success, false on failure
+ */
+function executeTransaction($pdo, $queries, $params) {
+    // Begin transaction
+    if (!beginTransaction($pdo)) {
+        return false;
+    }
+    
+    try {
+        // Execute each query
+        foreach ($queries as $index => $query) {
+            $stmt = $pdo->prepare($query);
+            
+            if (!$stmt->execute($params[$index] ?? [])) {
+                // Query failed, roll back transaction
+                rollbackTransaction($pdo);
+                logError('Transaction query failed: ' . $query);
+                return false;
+            }
+        }
+        
+        // All queries successful, commit transaction
+        return commitTransaction($pdo);
+    } catch (PDOException $e) {
+        // Exception occurred, roll back transaction
+        rollbackTransaction($pdo);
+        logError('Transaction failed: ' . $e->getMessage());
+        return false;
+    }
+}</code></pre>
+            </div>
+            
+            <h3 class="text-lg font-medium text-gray-700 mb-2">Execute Callable in Transaction</h3>
+            <div class="code-block bg-gray-800 text-white p-4 rounded-md mb-6">
+                <pre class="text-sm"><code>/**
+ * Execute a callable function within a transaction
+ * 
+ * @param PDO $pdo PDO database connection
+ * @param callable $callable Function to execute
+ * @param array $args Arguments to pass to the callable
+ * @return mixed Result of callable on success, false on failure
+ */
+function executeCallableInTransaction($pdo, callable $callable, array $args = []) {
+    // Begin transaction
+    if (!beginTransaction($pdo)) {
+        return false;
+    }
+    
+    try {
+        // Execute the callable
+        $result = call_user_func_array($callable, $args);
+        
+        // If result is explicitly false, roll back
+        if ($result === false) {
+            rollbackTransaction($pdo);
+            logError('Callable returned false, transaction rolled back');
+            return false;
+        }
+        
+        // Commit transaction
+        if (commitTransaction($pdo)) {
+            return $result;
+        } else {
+            return false;
+        }
+    } catch (Exception $e) {
+        // Exception occurred, roll back transaction
+        rollbackTransaction($pdo);
+        logError('Transaction callable failed: ' . $e->getMessage());
+        return false;
+    }
+}</code></pre>
+            </div>
+        </div>
+        
+        <div class="function-block">
+            <h2 class="text-xl font-semibold text-gray-700 mb-3">Specialized Transaction Functions</h2>
+            
+            <h3 class="text-lg font-medium text-gray-700 mb-2">Client Update Transaction</h3>
+            <div class="code-block bg-gray-800 text-white p-4 rounded-md mb-6">
+                <pre class="text-sm"><code>/**
+ * Update client information as a transaction
+ * Ensures that client data and related records are updated consistently
+ * 
+ * @param PDO $pdo PDO database connection
+ * @param int $clientId Client ID
+ * @param array $clientData Client data to update
+ * @param array $additionalUpdates Additional related records to update
+ * @return bool True on success, false on failure
+ */
+function updateClientTransaction($pdo, $clientId, $clientData, $additionalUpdates = []) {
+    // Begin transaction
+    if (!beginTransaction($pdo)) {
+        return false;
+    }
+    
+    try {
+        // Update main client record
+        $query = "UPDATE master_clients SET 
+                  client_id_name = :client_name,
+                  mobile_number = :mobile_number";
+        
+        $params = [
+            ':client_id' => $clientId,
+            ':client_name' => $clientData['client_id_name'],
+            ':mobile_number' => $clientData['mobile_number']
+        ];
+        
+        // Add deposit fields if provided
+        if (isset($clientData['deposit_amount'])) {
+            $query .= ", deposit_amount = :deposit_amount, deposit_tag = :deposit_tag";
+            $params[':deposit_amount'] = $clientData['deposit_amount'];
+            $params[':deposit_tag'] = $clientData['deposit_tag'];
+        }
+        
+        $query .= " WHERE id = :client_id";
+        
+        $stmt = $pdo->prepare($query);
+        if (!$stmt->execute($params)) {
+            rollbackTransaction($pdo);
+            logError('Failed to update client record');
+            return false;
+        }
+        
+        // Process additional updates
+        foreach ($additionalUpdates as $update) {
+            $stmt = $pdo->prepare($update['query']);
+            if (!$stmt->execute($update['params'])) {
+                rollbackTransaction($pdo);
+                logError('Failed to process additional update: ' . $update['query']);
+                return false;
+            }
+        }
+        
+        // All operations successful, commit transaction
+        return commitTransaction($pdo);
+    } catch (PDOException $e) {
+        rollbackTransaction($pdo);
+        logError('Client update transaction failed: ' . $e->getMessage());
+        return false;
+    }
+}</code></pre>
+            </div>
+            
+            <h3 class="text-lg font-medium text-gray-700 mb-2">Campaign Assignment Transaction</h3>
+            <div class="code-block bg-gray-800 text-white p-4 rounded-md mb-6">
+                <pre class="text-sm"><code>/**
+ * Assign campaign leads to users as a transaction
+ * 
+ * @param PDO $pdo PDO database connection
+ * @param int $campaignId Campaign ID
+ * @param array $assignments Array of user assignments [lead_id => user_id]
+ * @return bool True on success, false on failure
+ */
+function assignCampaignLeadsTransaction($pdo, $campaignId, $assignments) {
+    // Begin transaction
+    if (!beginTransaction($pdo)) {
+        return false;
+    }
+    
+    try {
+        // Process each assignment
+        foreach ($assignments as $leadId => $userId) {
+            $query = "UPDATE campaign_clients 
+                      SET assigned_user = :user_id, 
+                          status = 'pending',
+                          updated_at = NOW()
+                      WHERE id = :lead_id AND campaign_id = :campaign_id";
+            
+            $stmt = $pdo->prepare($query);
+            if (!$stmt->execute([
+                ':user_id' => $userId,
+                ':lead_id' => $leadId,
+                ':campaign_id' => $campaignId
+            ])) {
+                rollbackTransaction($pdo);
+                logError('Failed to assign campaign lead: ' . $leadId);
+                return false;
+            }
+        }
+        
+        // Update campaign stats
+        $query = "UPDATE campaigns 
+                  SET assigned_leads = (
+                      SELECT COUNT(*) FROM campaign_clients 
+                      WHERE campaign_id = :campaign_id AND assigned_user IS NOT NULL
+                  ),
+                  updated_at = NOW()
+                  WHERE id = :campaign_id";
+        
+        $stmt = $pdo->prepare($query);
+        if (!$stmt->execute([':campaign_id' => $campaignId])) {
+            rollbackTransaction($pdo);
+            logError('Failed to update campaign stats');
+            return false;
+        }
+        
+        // All operations successful, commit transaction
+        return commitTransaction($pdo);
+    } catch (PDOException $e) {
+        rollbackTransaction($pdo);
+        logError('Campaign assignment transaction failed: ' . $e->getMessage());
+        return false;
+    }
+}</code></pre>
+            </div>
+        </div>
+
+        <div class="function-block">
+            <h2 class="text-xl font-semibold text-gray-700 mb-3">Usage Examples</h2>
+            
+            <h3 class="text-lg font-medium text-gray-700 mb-2">Basic Transaction</h3>
+            <div class="code-block bg-gray-800 text-white p-4 rounded-md mb-6">
+                <pre class="text-sm"><code>// Example of basic transaction usage
+try {
+    // Begin transaction
+    beginTransaction($pdo);
+    
+    // Execute multiple SQL statements
+    $stmt1 = $pdo->prepare("INSERT INTO table1 VALUES (:value1, :value2)");
+    $stmt1->execute([':value1' => 'data1', ':value2' => 'data2']);
+    
+    $stmt2 = $pdo->prepare("UPDATE table2 SET field = :value WHERE id = :id");
+    $stmt2->execute([':value' => 'updated', ':id' => 123]);
+    
+    // Commit transaction if all statements succeeded
+    commitTransaction($pdo);
+    
+    return true;
+} catch (Exception $e) {
+    // Rollback transaction on any error
+    rollbackTransaction($pdo);
+    logError('Transaction failed: ' . $e->getMessage());
+    
+    return false;
+}</code></pre>
+            </div>
+            
+            <h3 class="text-lg font-medium text-gray-700 mb-2">Using Helper Functions</h3>
+            <div class="code-block bg-gray-800 text-white p-4 rounded-md mb-6">
+                <pre class="text-sm"><code>// Example using executeTransaction helper
+$queries = [
+    "INSERT INTO followups (client_id, user_id, date, status, remark) VALUES (:client_id, :user_id, :date, :status, :remark)",
+    "UPDATE master_clients SET last_followup_date = :date WHERE id = :client_id",
+    "INSERT INTO activity_logs (user_id, action, entity_id, entity_type) VALUES (:user_id, 'created_followup', :followup_id, 'followup')"
+];
+
+$params = [
+    [
+        ':client_id' => 123,
+        ':user_id' => 45,
+        ':date' => date('Y-m-d'),
+        ':status' => 'call_done',
+        ':remark' => 'Client called, will deposit tomorrow'
+    ],
+    [
+        ':date' => date('Y-m-d'),
+        ':client_id' => 123
+    ],
+    [
+        ':user_id' => 45,
+        ':followup_id' => $pdo->lastInsertId(), // This will be handled specially in the implementation
+        ':entity_type' => 'followup'
+    ]
+];
+
+$success = executeTransaction($pdo, $queries, $params);</code></pre>
+            </div>
+            
+            <h3 class="text-lg font-medium text-gray-700 mb-2">Using Callable Transaction</h3>
+            <div class="code-block bg-gray-800 text-white p-4 rounded-md mb-6">
+                <pre class="text-sm"><code>// Example using executeCallableInTransaction helper
+function processComplexOperation($pdo, $userId, $data) {
+    // First operation
+    $stmt1 = $pdo->prepare("INSERT INTO table1 VALUES (:param1, :param2)");
+    if (!$stmt1->execute([':param1' => $data['value1'], ':param2' => $data['value2']])) {
+        return false;
+    }
+    
+    $newId = $pdo->lastInsertId();
+    
+    // Second operation depends on the first
+    $stmt2 = $pdo->prepare("INSERT INTO table2 VALUES (:parent_id, :value)");
+    if (!$stmt2->execute([':parent_id' => $newId, ':value' => $data['related_value']])) {
+        return false;
+    }
+    
+    // Return the new ID if all operations succeeded
+    return $newId;
+}
+
+// Execute the complex operation in a transaction
+$newRecordId = executeCallableInTransaction(
+    $pdo,
+    'processComplexOperation',
+    [$pdo, $currentUserId, $formData]
+);</code></pre>
+            </div>
+        </div>
+        
+        <div class="mt-8 pt-6 border-t border-gray-200">
+            <p class="text-sm text-gray-500">
+                This helper file should be included in operations that require transaction support, such as complex data operations, campaign management, batch updates, and client management functions.
+            </p>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.24.1/prism.min.js"></script>
+</body>
+</html>
