@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Client Calling - CRM System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <style>
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-pending {
+            background-color: #FEF3C7;
+            color: #92400E;
+        }
+        .status-done {
+            background-color: #D1FAE5;
+            color: #065F46;
+        }
+        .days-warning {
+            background-color: #FEF3C7;
+        }
+        .days-alert {
+            background-color: #FEE2E2;
+        }
+        .days-critical {
+            background-color: #FECACA;
+            color: #991B1B;
+        }
+        @media print {
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <header class="bg-blue-600 text-white shadow-md">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center">
+                <i class="fas fa-phone-alt mr-2"></i>
+                <h1 class="text-xl font-bold">Client Calling & Follow-up CRM</h1>
+            </div>
+            <div class="flex items-center">
+                <span class="mr-3">Welcome, <span id="userName">User</span></span>
+                <a href="user_logout.php" class="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm no-print">
+                    <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                </a>
+            </div>
+        </div>
+        <nav class="bg-blue-700 py-2">
+            <div class="container mx-auto px-4">
+                <ul class="flex space-x-4 overflow-x-auto text-sm">
+                    <li><a href="user_dashboard.php" class="px-3 py-1 hover:bg-blue-800 rounded">Dashboard</a></li>
+                    <li><a href="daily_calling.php" class="px-3 py-1 bg-blue-800 rounded">Daily Calling</a></li>
+                    <li><a href="campaign_calling.php" class="px-3 py-1 hover:bg-blue-800 rounded">Campaign Calling</a></li>
+                    <li><a href="special_followup.php" class="px-3 py-1 hover:bg-blue-800 rounded">Special Follow-ups</a></li>
+                    <li><a href="my_history.php" class="px-3 py-1 hover:bg-blue-800 rounded">My History</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 py-6">
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Today's Not Playing Clients</h2>
+                <div class="text-sm text-gray-600">
+                    Date: <span id="currentDate">2025-04-28</span> | 
+                    Total Clients: <span id="totalClients" class="font-semibold">15</span>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 mb-4 no-print">
+                <div class="flex items-center">
+                    <span class="mr-2 text-sm text-gray-700">Filter:</span>
+                    <select id="statusFilter" class="text-sm border border-gray-300 rounded px-2 py-1 bg-white">
+                        <option value="all">All Clients</option>
+                        <option value="pending">Pending</option>
+                        <option value="done">Call Done</option>
+                        <option value="created">ID Created</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="flex items-center">
+                    <span class="mr-2 text-sm text-gray-700">Search:</span>
+                    <input type="text" id="searchInput" placeholder="Client ID or Mobile" class="text-sm border border-gray-300 rounded px-2 py-1 bg-white">
+                </div>
+                <button id="refreshButton" class="ml-auto bg-blue-100 text-blue-700 px-3 py-1 rounded text-sm flex items-center hover:bg-blue-200">
+                    <i class="fas fa-sync-alt mr-1"></i> Refresh List
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table id="clientTable" class="min-w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-700 text-left text-sm">
+                            <th class="px-4 py-2 border-b">Client ID</th>
+                            <th class="px-4 py-2 border-b">Mobile Number</th>
+                            <th class="px-4 py-2 border-b">Last Played</th>
+                            <th class="px-4 py-2 border-b">Days Not Played</th>
+                            <th class="px-4 py-2 border-b">Deposit</th>
+                            <th class="px-4 py-2 border-b">Status</th>
+                            <th class="px-4 py-2 border-b">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Sample data - in real implementation this would be populated from PHP -->
+                        <tr class="text-sm hover:bg-gray-50">
+                            <td class="px-4 py-3 border-b">ABC12345</td>
+                            <td class="px-4 py-3 border-b">9876543210</td>
+                            <td class="px-4 py-3 border-b">2025-04-21</td>
+                            <td class="px-4 py-3 border-b days-warning">7 days</td>
+                            <td class="px-4 py-3 border-b">₹8,500 <span class="text-xs text-gray-600">(Under 10K)</span></td>
+                            <td class="px-4 py-3 border-b"><span class="status-badge status-pending">Pending</span></td>
+                            <td class="px-4 py-3 border-b">
+                                <div class="flex space-x-1">
+                                    <button data-client="ABC12345" data-action="call-done" class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs hover:bg-green-200">Call Done</button>
+                                    <button data-client="ABC12345" data-action="id-created" class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs hover:bg-blue-200">ID Created</button>
+                                    <button data-client="ABC12345" data-action="other" class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs hover:bg-gray-200">Other</button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="text-sm hover:bg-gray-50">
+                            <td class="px-4 py-3 border-b">XYZ98765</td>
+                            <td class="px-4 py-3 border-b">8765432109</td>
+                            <td class="px-4 py-3 border-b">2025-04-13</td>
+                            <td class="px-4 py-3 border-b days-alert">15 days</td>
+                            <td class="px-4 py-3 border-b">₹12,000 <span class="text-xs text-gray-600">(Under 15K)</span></td>
+                            <td class="px-4 py-3 border-b"><span class="status-badge status-pending">Pending</span></td>
+                            <td class="px-4 py-3 border-b">
+                                <div class="flex space-x-1">
+                                    <button data-client="XYZ98765" data-action="call-done" class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs hover:bg-green-200">Call Done</button>
+                                    <button data-client="XYZ98765" data-action="id-created" class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs hover:bg-blue-200">ID Created</button>
+                                    <button data-client="XYZ98765" data-action="other" class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs hover:bg-gray-200">Other</button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="text-sm hover:bg-gray-50">
+                            <td class="px-4 py-3 border-b">PQR54321</td>
+                            <td class="px-4 py-3 border-b">7654321098</td>
+                            <td class="px-4 py-3 border-b">2025-03-29</td>
+                            <td class="px-4 py-3 border-b days-critical">30 days</td>
+                            <td class="px-4 py-3 border-b">₹25,000 <span class="text-xs text-gray-600">(Under 30K)</span></td>
+                            <td class="px-4 py-3 border-b"><span class="status-badge status-pending">Pending</span></td>
+                            <td class="px-4 py-3 border-b">
+                                <div class="flex space-x-1">
+                                    <button data-client="PQR54321" data-action="call-done" class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs hover:bg-green-200">Call Done</button>
+                                    <button data-client="PQR54321" data-action="id-created" class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs hover:bg-blue-200">ID Created</button>
+                                    <button data-client="PQR54321" data-action="other" class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs hover:bg-gray-200">Other</button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="text-sm hover:bg-gray-50">
+                            <td class="px-4 py-3 border-b">LMN67890</td>
+                            <td class="px-4 py-3 border-b">6543210987</td>
+                            <td class="px-4 py-3 border-b">2025-04-25</td>
+                            <td class="px-4 py-3 border-b">3 days</td>
+                            <td class="px-4 py-3 border-b">₹4,500 <span class="text-xs text-gray-600">(Under 5K)</span></td>
+                            <td class="px-4 py-3 border-b"><span class="status-badge status-done">Call Done</span></td>
+                            <td class="px-4 py-3 border-b">
+                                <div class="flex space-x-1">
+                                    <button disabled class="bg-gray-100 text-gray-400 px-2 py-1 rounded text-xs cursor-not-allowed">Call Done</button>
+                                    <button disabled class="bg-gray-100 text-gray-400 px-2 py-1 rounded text-xs cursor-not-allowed">ID Created</button>
+                                    <button disabled class="bg-gray-100 text-gray-400 px-2 py-1 rounded text-xs cursor-not-allowed">Other</button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="text-sm hover:bg-gray-50">
+                            <td class="px-4 py-3 border-b">DEF13579</td>
+                            <td class="px-4 py-3 border-b">5432109876</td>
+                            <td class="px-4 py-3 border-b">2025-04-18</td>
+                            <td class="px-4 py-3 border-b days-warning">10 days</td>
+                            <td class="px-4 py-3 border-b">₹52,000 <span class="text-xs text-gray-600">(More than 50K)</span></td>
+                            <td class="px-4 py-3 border-b"><span class="status-badge status-pending">Pending</span></td>
+                            <td class="px-4 py-3 border-b">
+                                <div class="flex space-x-1">
+                                    <button data-client="DEF13579" data-action="call-done" class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs hover:bg-green-200">Call Done</button>
+                                    <button data-client="DEF13579" data-action="id-created" class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs hover:bg-blue-200">ID Created</button>
+                                    <button data-client="DEF13579" data-action="other" class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs hover:bg-gray-200">Other</button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Today's Stats</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-green-50 p-4 rounded-lg border border-green-100">
+                    <h3 class="text-sm font-semibold text-green-800 mb-1">Calls Completed</h3>
+                    <div class="flex items-end">
+                        <span class="text-3xl font-bold text-green-700" id="callsCompleted">7</span>
+                        <span class="text-sm text-green-600 ml-2 mb-1">of 15 clients</span>
+                    </div>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <h3 class="text-sm font-semibold text-blue-800 mb-1">IDs Created</h3>
+                    <div class="flex items-end">
+                        <span class="text-3xl font-bold text-blue-700" id="idsCreated">2</span>
+                        <span class="text-sm text-blue-600 ml-2 mb-1">new IDs today</span>
+                    </div>
+                </div>
+                <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
+                    <h3 class="text-sm font-semibold text-yellow-800 mb-1">Pending Clients</h3>
+                    <div class="flex items-end">
+                        <span class="text-3xl font-bold text-yellow-700" id="pendingClients">6</span>
+                        <span class="text-sm text-yellow-600 ml-2 mb-1">clients remaining</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Recently Completed</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-700 text-left text-sm">
+                            <th class="px-4 py-2 border-b">Client ID</th>
+                            <th class="px-4 py-2 border-b">Action</th>
+                            <th class="px-4 py-2 border-b">Remarks</th>
+                            <th class="px-4 py-2 border-b">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm">
+                        <tr>
+                            <td class="px-4 py-3 border-b">LMN67890</td>
+                            <td class="px-4 py-3 border-b"><span class="status-badge status-done">Call Done</span></td>
+                            <td class="px-4 py-3 border-b">Client will deposit tomorrow</td>
+                            <td class="px-4 py-3 border-b">10 minutes ago</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 border-b">JKL24680</td>
+                            <td class="px-4 py-3 border-b"><span class="status-badge status-done">ID Created</span></td>
+                            <td class="px-4 py-3 border-b">New ID created via WhatsApp</td>
+                            <td class="px-4 py-3 border-b">25 minutes ago</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 border-b">MNO13579</td>
+                            <td class="px-4 py-3 border-b"><span class="status-badge status-done">Other</span></td>
+                            <td class="px-4 py-3 border-b">Not answering, will try later</td>
+                            <td class="px-4 py-3 border-b">45 minutes ago</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal for entering remarks -->
+    <div id="remarksModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-800" id="modalTitle">Call Done - ABC12345</h3>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="remarksForm">
+                <input type="hidden" id="clientId" name="clientId" value="">
+                <input type="hidden" id="actionType" name="actionType" value="">
+                
+                <div class="mb-4">
+                    <label for="remarks" class="block text-sm font-medium text-gray-700 mb-1">Remarks/Notes:</label>
+                    <textarea id="remarks" name="remarks" rows="4" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter details about the call..."></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-2">
+                    <button type="button" id="cancelButton" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                        Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Set current date
+        document.getElementById('currentDate').textContent = new Date().toISOString().split('T')[0];
+        
+        // Update username - in a real app, this would come from PHP session
+        document.getElementById('userName').textContent = "John Smith";
+        
+        // Handle action buttons (Call Done, ID Created, Other)
+        document.querySelectorAll('[data-action]').forEach(button => {
+            button.addEventListener('click', function() {
+                const clientId = this.getAttribute('data-client');
+                const action = this.getAttribute('data-action');
+                
+                // Set modal values
+                document.getElementById('clientId').value = clientId;
+                document.getElementById('actionType').value = action;
+                
+                // Set modal title based on action
+                let actionTitle = '';
+                if (action === 'call-done') actionTitle = 'Call Done';
+                else if (action === 'id-created') actionTitle = 'ID Created';
+                else actionTitle = 'Other Status';
+                
+                document.getElementById('modalTitle').textContent = `${actionTitle} - ${clientId}`;
+                
+                // Show modal
+                document.getElementById('remarksModal').classList.remove('hidden');
+            });
+        });
+        
+        // Close modal functions
+        document.getElementById('closeModal').addEventListener('click', function() {
+            document.getElementById('remarksModal').classList.add('hidden');
+        });
+        
+        document.getElementById('cancelButton').addEventListener('click', function() {
+            document.getElementById('remarksModal').classList.add('hidden');
+        });
+        
+        // Handle form submission
+        document.getElementById('remarksForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const clientId = document.getElementById('clientId').value;
+            const actionType = document.getElementById('actionType').value;
+            const remarks = document.getElementById('remarks').value;
+            
+            // In a real implementation, this would be an AJAX request to save_followup.php
+            console.log('Saving followup:', { clientId, actionType, remarks });
+            
+            // For demo purposes, update the UI to show completed
+            const row = document.querySelector(`[data-client="${clientId}"]`).closest('tr');
+            const statusCell = row.querySelector('td:nth-child(6)');
+            const actionsCell = row.querySelector('td:nth-child(7)');
+            
+            // Update status badge
+            let newStatus = '';
+            if (actionType === 'call-done') newStatus = 'Call Done';
+            else if (actionType === 'id-created') newStatus = 'ID Created';
+            else newStatus = 'Other';
+            
+            statusCell.innerHTML = `<span class="status-badge status-done">${newStatus}</span>`;
+            
+            // Disable action buttons
+            actionsCell.innerHTML = `
+                <div class="flex space-x-1">
+                    <button disabled class="bg-gray-100 text-gray-400 px-2 py-1 rounded text-xs cursor-not-allowed">Call Done</button>
+                    <button disabled class="bg-gray-100 text-gray-400 px-2 py-1 rounded text-xs cursor-not-allowed">ID Created</button>
+                    <button disabled class="bg-gray-100 text-gray-400 px-2 py-1 rounded text-xs cursor-not-allowed">Other</button>
+                </div>
+            `;
+            
+            // Update stats
+            const callsCompleted = document.getElementById('callsCompleted');
+            callsCompleted.textContent = parseInt(callsCompleted.textContent) + 1;
+            
+            const pendingClients = document.getElementById('pendingClients');
+            pendingClients.textContent = parseInt(pendingClients.textContent) - 1;
+            
+            if (actionType === 'id-created') {
+                const idsCreated = document.getElementById('idsCreated');
+                idsCreated.textContent = parseInt(idsCreated.textContent) + 1;
+            }
+            
+            // Close modal
+            document.getElementById('remarksModal').classList.add('hidden');
+            
+            // Clear form
+            document.getElementById('remarks').value = '';
+        });
+        
+        // Filter functionality
+        document.getElementById('statusFilter').addEventListener('change', function() {
+            const status = this.value;
+            const rows = document.querySelectorAll('#clientTable tbody tr');
+            
+            rows.forEach(row => {
+                const statusText = row.querySelector('td:nth-child(6)').textContent.trim().toLowerCase();
+                
+                if (status === 'all' || 
+                    (status === 'pending' && statusText.includes('pending')) ||
+                    (status === 'done' && statusText.includes('call done')) ||
+                    (status === 'created' && statusText.includes('id created')) ||
+                    (status === 'other' && statusText.includes('other'))) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+        
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#clientTable tbody tr');
+            
+            rows.forEach(row => {
+                const clientId = row.querySelector('td:nth-child(1)').textContent.toLowerCase();
+                const mobile = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+                
+                if (clientId.includes(searchTerm) || mobile.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+        
+        // Refresh button
+        document.getElementById('refreshButton').addEventListener('click', function() {
+            // In a real implementation, this would reload data from the server
+            alert('In a real implementation, this would refresh the client list from the server.');
+        });
+    </script>
+</body>
+</html>
