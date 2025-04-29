@@ -1,0 +1,390 @@
+// user_validation.js - Client-side form validation for CRM system
+// Created for Client Calling & Follow-up CRM
+
+/**
+ * Core validation utilities
+ */
+const Validator = {
+    // Common validation patterns
+    patterns: {
+        email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+        phone: /^[0-9]{10}$/,
+        number: /^[0-9]+$/,
+        decimal: /^[0-9]+(\.[0-9]{1,2})?$/,
+        name: /^[a-zA-Z0-9\s\._-]+$/,
+        clientId: /^[a-zA-Z0-9\s\._-]+$/,
+        password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/
+    },
+
+    // Error messages
+    messages: {
+        required: "This field is required",
+        email: "Please enter a valid email address",
+        phone: "Please enter a valid 10-digit phone number",
+        number: "Please enter numbers only",
+        decimal: "Please enter a valid amount (e.g., 1000.50)",
+        name: "Please enter a valid name (letters, numbers, spaces, and basic punctuation only)",
+        clientId: "Please enter a valid client ID (letters, numbers, spaces, and basic punctuation only)",
+        minLength: "This field must be at least {min} characters long",
+        maxLength: "This field cannot exceed {max} characters",
+        password: "Password must be at least 8 characters with at least one uppercase letter, one lowercase letter, and one number"
+    },
+
+    // Validation methods
+    methods: {
+        required: function(value) {
+            return value !== null && value.trim() !== '';
+        },
+        pattern: function(value, pattern) {
+            return pattern.test(value);
+        },
+        minLength: function(value, min) {
+            return value.length >= min;
+        },
+        maxLength: function(value, max) {
+            return value.length <= max;
+        },
+        match: function(value, matchValue) {
+            return value === matchValue;
+        }
+    },
+
+    // Display error message
+    showError: function(input, message) {
+        const formGroup = input.closest('.form-group') || input.parentElement;
+        const errorElement = formGroup.querySelector('.error-message') || document.createElement('div');
+        
+        if (!formGroup.querySelector('.error-message')) {
+            errorElement.className = 'error-message text-danger mt-1';
+            formGroup.appendChild(errorElement);
+        }
+        
+        input.classList.add('is-invalid');
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+        
+        // Add animation
+        errorElement.style.animation = 'shake 0.5s';
+    },
+
+    // Clear error message
+    clearError: function(input) {
+        const formGroup = input.closest('.form-group') || input.parentElement;
+        const errorElement = formGroup.querySelector('.error-message');
+        
+        if (errorElement) {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+        }
+        
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+    },
+
+    // Validate single input
+    validateInput: function(input, rules) {
+        let isValid = true;
+        const value = input.value.trim();
+        
+        // Check required rule first
+        if (rules.required && !this.methods.required(value)) {
+            this.showError(input, this.messages.required);
+            return false;
+        }
+        
+        // Skip other validations if field is empty and not required
+        if (value === '' && !rules.required) {
+            this.clearError(input);
+            return true;
+        }
+        
+        // Check other rules
+        if (rules.email && !this.methods.pattern(value, this.patterns.email)) {
+            this.showError(input, this.messages.email);
+            return false;
+        }
+        
+        if (rules.phone && !this.methods.pattern(value, this.patterns.phone)) {
+            this.showError(input, this.messages.phone);
+            return false;
+        }
+        
+        if (rules.number && !this.methods.pattern(value, this.patterns.number)) {
+            this.showError(input, this.messages.number);
+            return false;
+        }
+        
+        if (rules.decimal && !this.methods.pattern(value, this.patterns.decimal)) {
+            this.showError(input, this.messages.decimal);
+            return false;
+        }
+        
+        if (rules.name && !this.methods.pattern(value, this.patterns.name)) {
+            this.showError(input, this.messages.name);
+            return false;
+        }
+        
+        if (rules.clientId && !this.methods.pattern(value, this.patterns.clientId)) {
+            this.showError(input, this.messages.clientId);
+            return false;
+        }
+        
+        if (rules.password && !this.methods.pattern(value, this.patterns.password)) {
+            this.showError(input, this.messages.password);
+            return false;
+        }
+        
+        if (rules.minLength && !this.methods.minLength(value, rules.minLength)) {
+            const message = this.messages.minLength.replace('{min}', rules.minLength);
+            this.showError(input, message);
+            return false;
+        }
+        
+        if (rules.maxLength && !this.methods.maxLength(value, rules.maxLength)) {
+            const message = this.messages.maxLength.replace('{max}', rules.maxLength);
+            this.showError(input, message);
+            return false;
+        }
+        
+        if (rules.match) {
+            const matchInput = document.querySelector(rules.match);
+            if (matchInput && !this.methods.match(value, matchInput.value)) {
+                this.showError(input, rules.matchMessage || "Fields do not match");
+                return false;
+            }
+        }
+        
+        this.clearError(input);
+        return true;
+    },
+
+    // Validate entire form
+    validateForm: function(form, validationRules) {
+        let isValid = true;
+        
+        for (const fieldName in validationRules) {
+            const input = form.querySelector(`[name="${fieldName}"]`);
+            if (input) {
+                const fieldIsValid = this.validateInput(input, validationRules[fieldName]);
+                isValid = isValid && fieldIsValid;
+            }
+        }
+        
+        return isValid;
+    },
+
+    // Initialize real-time validation
+    initRealTimeValidation: function(form, validationRules) {
+        for (const fieldName in validationRules) {
+            const input = form.querySelector(`[name="${fieldName}"]`);
+            if (input) {
+                input.addEventListener('blur', () => {
+                    this.validateInput(input, validationRules[fieldName]);
+                });
+                
+                input.addEventListener('input', () => {
+                    if (input.classList.contains('is-invalid')) {
+                        this.validateInput(input, validationRules[fieldName]);
+                    }
+                });
+            }
+        }
+        
+        form.addEventListener('submit', (event) => {
+            const isValid = this.validateForm(form, validationRules);
+            if (!isValid) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // Scroll to first error
+                const firstError = form.querySelector('.is-invalid');
+                if (firstError) {
+                    firstError.focus();
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+};
+
+/**
+ * Form-specific validation rules
+ */
+const FormRules = {
+    // Login form validation rules
+    loginForm: {
+        username: {
+            required: true,
+            minLength: 3
+        },
+        password: {
+            required: true
+        }
+    },
+    
+    // User profile form validation rules
+    profileForm: {
+        fullname: {
+            required: true,
+            name: true,
+            minLength: 3,
+            maxLength: 50
+        },
+        email: {
+            required: true,
+            email: true
+        },
+        phone: {
+            required: true,
+            phone: true
+        },
+        current_password: {
+            required: true
+        },
+        new_password: {
+            password: true
+        },
+        confirm_password: {
+            match: '[name="new_password"]',
+            matchMessage: "Passwords do not match"
+        }
+    },
+    
+    // New client ID form validation rules
+    newClientForm: {
+        client_id_name: {
+            required: true,
+            clientId: true,
+            minLength: 3,
+            maxLength: 50
+        },
+        mobile_number: {
+            required: true,
+            phone: true
+        },
+        deposit_amount: {
+            required: true,
+            decimal: true
+        },
+        remark: {
+            maxLength: 200
+        }
+    },
+    
+    // Call result form validation rules
+    callResultForm: {
+        status: {
+            required: true
+        },
+        remark: {
+            required: true,
+            minLength: 5,
+            maxLength: 200
+        }
+    }
+};
+
+/**
+ * Initialize validation on page load
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize login form validation
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        Validator.initRealTimeValidation(loginForm, FormRules.loginForm);
+    }
+    
+    // Initialize profile form validation
+    const profileForm = document.getElementById('profileForm');
+    if (profileForm) {
+        Validator.initRealTimeValidation(profileForm, FormRules.profileForm);
+    }
+    
+    // Initialize new client form validation
+    const newClientForm = document.getElementById('newClientForm');
+    if (newClientForm) {
+        Validator.initRealTimeValidation(newClientForm, FormRules.newClientForm);
+        
+        // Special handling for deposit amount
+        const depositAmount = document.getElementById('deposit_amount');
+        const depositTag = document.getElementById('deposit_tag');
+        
+        if (depositAmount && depositTag) {
+            depositAmount.addEventListener('input', function() {
+                const amount = parseFloat(this.value) || 0;
+                let tag = "";
+                
+                if (amount < 5000) tag = "Under 5K";
+                else if (amount < 10000) tag = "Under 10K";
+                else if (amount < 15000) tag = "Under 15K";
+                else if (amount < 20000) tag = "Under 20K";
+                else if (amount < 30000) tag = "Under 30K";
+                else if (amount < 50000) tag = "Under 50K";
+                else tag = "More than 50K";
+                
+                depositTag.value = tag;
+            });
+        }
+    }
+    
+    // Initialize call result form validation
+    const callResultForm = document.getElementById('callResultForm');
+    if (callResultForm) {
+        Validator.initRealTimeValidation(callResultForm, FormRules.callResultForm);
+    }
+    
+    // Add keypress handler for number-only inputs
+    const numberInputs = document.querySelectorAll('input[data-type="number"]');
+    numberInputs.forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (!/[0-9]/.test(e.key)) {
+                e.preventDefault();
+            }
+        });
+    });
+    
+    // Add keypress handler for decimal inputs
+    const decimalInputs = document.querySelectorAll('input[data-type="decimal"]');
+    decimalInputs.forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (!/[0-9.]/.test(e.key) || (e.key === '.' && this.value.includes('.'))) {
+                e.preventDefault();
+            }
+        });
+    });
+});
+
+// CSS Animations
+const style = document.createElement('style');
+style.textContent = `
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+.is-invalid {
+    border-color: #dc3545 !important;
+    padding-right: calc(1.5em + 0.75rem);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.is-valid {
+    border-color: #198754 !important;
+    padding-right: calc(1.5em + 0.75rem);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+`;
+document.head.appendChild(style);
