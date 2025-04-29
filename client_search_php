@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Search - CRM System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.1/css/all.min.css">
+    <style>
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background-color: #f9fafb;
+            font-weight: 600;
+        }
+        tbody tr:hover {
+            background-color: #f9fafb;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.25em 0.7em;
+            font-size: 0.75em;
+            font-weight: 700;
+            border-radius: 9999px;
+            white-space: nowrap;
+        }
+        .days-tag-1 { background-color: #dcfce7; color: #166534; }
+        .days-tag-2 { background-color: #fef9c3; color: #854d0e; }
+        .days-tag-3 { background-color: #fee2e2; color: #991b1b; }
+        .deposit-tag-1 { background-color: #e0f2fe; color: #0369a1; }
+        .deposit-tag-2 { background-color: #dbeafe; color: #1d4ed8; }
+        .deposit-tag-3 { background-color: #e8e8fc; color: #4338ca; }
+        .deposit-tag-4 { background-color: #ede9fe; color: #6d28d9; }
+        .deposit-tag-5 { background-color: #f3e8ff; color: #7e22ce; }
+        .deposit-tag-6 { background-color: #fce7f3; color: #be185d; }
+        .deposit-tag-7 { background-color: #ccfbf1; color: #0f766e; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-2xl font-bold text-blue-700">
+                <i class="fas fa-search mr-2"></i> Client Search
+            </h1>
+            <div class="flex items-center">
+                <span class="bg-blue-100 text-blue-800 text-sm font-medium mr-2 px-3 py-1 rounded-full">
+                    <i class="fas fa-users mr-1"></i> Total: 1,542 clients
+                </span>
+                <a href="master_clients.php" class="text-blue-600 hover:text-blue-800">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Master List
+                </a>
+            </div>
+        </div>
+
+        <!-- Search Form Card -->
+        <div class="card bg-white rounded-lg p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700">Search Filters</h2>
+            
+            <form action="" method="GET" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="mb-4">
+                    <label for="client_name" class="block text-sm font-medium text-gray-700 mb-1">Client ID/Name</label>
+                    <input type="text" id="client_name" name="client_name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter client ID or name...">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="mobile_number" class="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                    <input type="text" id="mobile_number" name="mobile_number" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter mobile number...">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="days_not_played" class="block text-sm font-medium text-gray-700 mb-1">Days Not Played</label>
+                    <select id="days_not_played" name="days_not_played" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Any</option>
+                        <option value="7">More than 7 days</option>
+                        <option value="15">More than 15 days</option>
+                        <option value="30">More than 30 days</option>
+                        <option value="60">More than 60 days</option>
+                        <option value="90">More than 90 days</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="deposit_tag" class="block text-sm font-medium text-gray-700 mb-1">Deposit Tag</label>
+                    <select id="deposit_tag" name="deposit_tag" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Any</option>
+                        <option value="Under 5K">Under 5K</option>
+                        <option value="Under 10K">Under 10K</option>
+                        <option value="Under 15K">Under 15K</option>
+                        <option value="Under 20K">Under 20K</option>
+                        <option value="Under 30K">Under 30K</option>
+                        <option value="Under 50K">Under 50K</option>
+                        <option value="More than 50K">More than 50K</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="last_played_from" class="block text-sm font-medium text-gray-700 mb-1">Last Played From</label>
+                    <input type="date" id="last_played_from" name="last_played_from" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="last_played_to" class="block text-sm font-medium text-gray-700 mb-1">Last Played To</label>
+                    <input type="date" id="last_played_to" name="last_played_to" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="created_by" class="block text-sm font-medium text-gray-700 mb-1">Created By</label>
+                    <select id="created_by" name="created_by" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Any</option>
+                        <option value="1">John Doe</option>
+                        <option value="2">Jane Smith</option>
+                        <option value="3">Mike Johnson</option>
+                        <option value="4">Sarah Williams</option>
+                        <option value="5">Robert Brown</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="min_deposit" class="block text-sm font-medium text-gray-700 mb-1">Min Deposit Amount</label>
+                    <input type="number" id="min_deposit" name="min_deposit" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Min amount...">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="max_deposit" class="block text-sm font-medium text-gray-700 mb-1">Max Deposit Amount</label>
+                    <input type="number" id="max_deposit" name="max_deposit" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Max amount...">
+                </div>
+                
+                <div class="flex items-center space-x-4 mt-2">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-300 flex items-center">
+                        <i class="fas fa-search mr-2"></i> Search
+                    </button>
+                    <button type="reset" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors duration-300 flex items-center">
+                        <i class="fas fa-redo-alt mr-2"></i> Reset
+                    </button>
+                    <a href="#" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-300 flex items-center">
+                        <i class="fas fa-file-excel mr-2"></i> Export Results
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Search Results Card -->
+        <div class="card bg-white rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-gray-700">Search Results</h2>
+                <span class="text-sm text-gray-500">Showing 15 of 152 results</span>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                Client ID/Name
+                            </th>
+                            <th class="px-4 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                Mobile Number
+                            </th>
+                            <th class="px-4 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                Last Played
+                            </th>
+                            <th class="px-4 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                Days Not Played
+                            </th>
+                            <th class="px-4 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                Deposit Amount
+                            </th>
+                            <th class="px-4 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                Deposit Tag
+                            </th>
+                            <th class="px-4 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white">
+                        <!-- Client 1 -->
+                        <tr>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <div class="flex items-center">
+                                    <div>
+                                        <p class="text-gray-900 whitespace-nowrap">JOHN2023</p>
+                                        <p class="text-gray-500 text-sm">Created: 10-Jan-2023</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">+91 98765 43210</td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">15-Apr-2023</td>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <span class="badge days-tag-3">45 days</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">₹12,500</td>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <span class="badge deposit-tag-3">Under 15K</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-sm">
+                                <div class="flex items-center space-x-2">
+                                    <button class="text-blue-600 hover:text-blue-800" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-green-600 hover:text-green-800" title="Assign for Follow-up">
+                                        <i class="fas fa-phone-alt"></i>
+                                    </button>
+                                    <button class="text-gray-600 hover:text-gray-800" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <!-- Client 2 -->
+                        <tr>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <div class="flex items-center">
+                                    <div>
+                                        <p class="text-gray-900 whitespace-nowrap">RAHUL_KT</p>
+                                        <p class="text-gray-500 text-sm">Created: 05-Mar-2023</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">+91 87654 32109</td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">25-May-2023</td>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <span class="badge days-tag-2">12 days</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">₹25,000</td>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <span class="badge deposit-tag-5">Under 30K</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-sm">
+                                <div class="flex items-center space-x-2">
+                                    <button class="text-blue-600 hover:text-blue-800" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-green-600 hover:text-green-800" title="Assign for Follow-up">
+                                        <i class="fas fa-phone-alt"></i>
+                                    </button>
+                                    <button class="text-gray-600 hover:text-gray-800" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <!-- Client 3 -->
+                        <tr>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <div class="flex items-center">
+                                    <div>
+                                        <p class="text-gray-900 whitespace-nowrap">POOJA_M</p>
+                                        <p class="text-gray-500 text-sm">Created: 22-Feb-2023</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">+91 76543 21098</td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">30-May-2023</td>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <span class="badge days-tag-1">7 days</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">₹8,000</td>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <span class="badge deposit-tag-2">Under 10K</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-sm">
+                                <div class="flex items-center space-x-2">
+                                    <button class="text-blue-600 hover:text-blue-800" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-green-600 hover:text-green-800" title="Assign for Follow-up">
+                                        <i class="fas fa-phone-alt"></i>
+                                    </button>
+                                    <button class="text-gray-600 hover:text-gray-800" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <!-- Client 4 -->
+                        <tr>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <div class="flex items-center">
+                                    <div>
+                                        <p class="text-gray-900 whitespace-nowrap">VIKRAM_S</p>
+                                        <p class="text-gray-500 text-sm">Created: 14-Apr-2023</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">+91 65432 10987</td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">10-Apr-2023</td>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <span class="badge days-tag-3">57 days</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">₹35,000</td>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <span class="badge deposit-tag-6">Under 50K</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-sm">
+                                <div class="flex items-center space-x-2">
+                                    <button class="text-blue-600 hover:text-blue-800" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-green-600 hover:text-green-800" title="Assign for Follow-up">
+                                        <i class="fas fa-phone-alt"></i>
+                                    </button>
+                                    <button class="text-gray-600 hover:text-gray-800" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <!-- Client 5 -->
+                        <tr>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <div class="flex items-center">
+                                    <div>
+                                        <p class="text-gray-900 whitespace-nowrap">NEHA_R</p>
+                                        <p class="text-gray-500 text-sm">Created: 08-May-2023</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">+91 54321 09876</td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">02-Jun-2023</td>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <span class="badge days-tag-1">4 days</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">₹55,000</td>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <span class="badge deposit-tag-7">More than 50K</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-sm">
+                                <div class="flex items-center space-x-2">
+                                    <button class="text-blue-600 hover:text-blue-800" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-green-600 hover:text-green-800" title="Assign for Follow-up">
+                                        <i class="fas fa-phone-alt"></i>
+                                    </button>
+                                    <button class="text-gray-600 hover:text-gray-800" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <!-- Client 6 -->
+                        <tr>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <div class="flex items-center">
+                                    <div>
+                                        <p class="text-gray-900 whitespace-nowrap">AMIT_J</p>
+                                        <p class="text-gray-500 text-sm">Created: 19-Jan-2023</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">+91 43210 98765</td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">05-May-2023</td>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <span class="badge days-tag-2">32 days</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-gray-900">₹18,000</td>
+                            <td class="px-4 py-3 border-b border-gray-200">
+                                <span class="badge deposit-tag-4">Under 20K</span>
+                            </td>
+                            <td class="px-4 py-3 border-b border-gray-200 text-sm">
+                                <div class="flex items-center space-x-2">
+                                    <button class="text-blue-600 hover:text-blue-800" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-green-600 hover:text-green-800" title="Assign for Follow-up">
+                                        <i class="fas fa-phone-alt"></i>
+                                    </button>
+                                    <button class="text-gray-600 hover:text-gray-800" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span class="font-medium">1</span> to <span class="font-medium">6</span> of <span class="font-medium">152</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Previous</span>
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                            <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600 hover:bg-blue-100">1</a>
+                            <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">2</a>
+                            <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">3</a>
+                            <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>
+                            <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">26</a>
+                            <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Next</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bulk Actions -->
+        <div class="card bg-white rounded-lg p-6 mt-6">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700">Bulk Actions</h2>
+            
+            <form action="" method="POST" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="bulk_action" class="block text-sm font-medium text-gray-700 mb-1">Action</label>
+                        <select id="bulk_action" name="bulk_action" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select Action</option>
+                            <option value="assign_followup">Assign for Follow-up</option>
+                            <option value="export_selected">Export Selected</option>
+                            <option value="update_tag">Update Deposit Tag</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="assign_user" class="block text-sm font-medium text-gray-700 mb-1">Assign To User</label>
+                        <select id="assign_user" name="assign_user" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select User</option>
+                            <option value="1">John Doe</option>
+                            <option value="2">Jane Smith</option>
+                            <option value="3">Mike Johnson</option>
+                            <option value="4">Sarah Williams</option>
+                            <option value="5">Robert Brown</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="followup_note" class="block text-sm font-medium text-gray-700 mb-1">Note</label>
+                        <input type="text" id="followup_note" name="followup_note" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Optional note for assignment...">
+                    </div>
+                </div>
+                
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-300 flex items-center">
+                    <i class="fas fa-check-circle mr-2"></i> Apply to Selected Clients
+                </button>
+            </form>
+        </div>
+        
+        <!-- Help Section -->
+        <div class="bg-blue-50 rounded-lg p-6 mt-6">
+            <h3 class="text-lg font-semibold mb-3 text-blue-700">
+                <i class="fas fa-info-circle mr-2"></i> Using Client Search
+            </h3>
+            <div class="text-sm text-blue-800">
+                <p class="mb-2"><strong>Days Not Played:</strong> Filter clients who haven't played for specific number of days.</p>
+                <p class="mb-2"><strong>Deposit Tag:</strong> Filter by deposit amount category.</p>
+                <p class="mb-2"><strong>Last Played Date:</strong> Find clients who last played within a specific date range.</p>
+                <p class="mb-2"><strong>Bulk Actions:</strong> Select multiple clients and assign them for follow-up to specific users.</p>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="mt-8 text-center text-gray-500 text-sm">
+            <p>Client Calling & Follow-up CRM &copy; 2023. All rights reserved.</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Toggle select all checkboxes
+            $('#select-all').on('change', function() {
+                $('.client-checkbox').prop('checked', $(this).is(':checked'));
+            });
+            
+            // Show/hide assign user field based on selected action
+            $('#bulk_action').on('change', function() {
+                if ($(this).val() === 'assign_followup') {
+                    $('#assign_user').parent().show();
+                    $('#followup_note').parent().show();
+                } else {
+                    $('#assign_user').parent().hide();
+                    $('#followup_note').parent().hide();
+                }
+            });
+            
+            // Initialize: hide assign fields
+            $('#assign_user').parent().hide();
+            $('#followup_note').parent().hide();
+        });
+    </script>
+</body>
+</html>
